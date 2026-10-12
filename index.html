@@ -289,7 +289,7 @@ function sim(req){
   if(req.op === 'visit'){ var v = req.v || {}; (c.visits = c.visits || []).push({date:v.date || D.today, 'with':v['with'] || [], like:v.like || 0, note:v.note || ''}); c.status = 'done'; return {ok:true, p:c}; }
   if(req.op === 'unvisit'){ (c.visits = c.visits || []).splice(req.i, 1); if(!c.visits.length && c.status === 'done') c.status = 'want'; return {ok:true, p:c}; }
   if(req.op === 'add' || req.op === 'quick'){
-    var s = req.op === 'quick' ? String(req.text || '').replace(/https?:\/\/\S+/g, '').trim() : '';
+    var s = req.op === 'quick' && !/https?:\/\//.test(req.text || '') ? String(req.text || '').trim() : '';   // 貼連結的：後面那句是備註不是店名
     var p = req.op === 'add' ? JSON.parse(JSON.stringify(req.p)) : {name:s ? s.slice(0, 30) : '剛貼的地點', pending:true};
     p.id = 'tmp_'+Math.random().toString(36).slice(2, 10); p.added = D.today; p.visits = []; p.status = p.status || 'want';
     return {ok:true, id:p.id, p:p};
