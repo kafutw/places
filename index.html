@@ -1,0 +1,601 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>外出待去清單</title>
+<link rel="icon" href="icon.png"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-title" content="待去清單"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#3e8a74"><meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<!-- 2026-10-10 外出待去清單：想去的餐廳景點，依跟誰去、想吃什麼調出來。產生器 ~/bin/kafu_places.py，本機服務 GET /places 每次現跑。樣式沿用股市看板 -->
+<style>
+/* 10/11 他從 places-theme.html 六版挑 1 松綠暖杏：頁首跟工作台標題列同一個松綠，按鈕改柔一點的杏色 */
+:root{--ink:#1d2f2a;--body:#3d524b;--mute:#5f737a;--line:#d7e5df;--soft:#ecf3f0;--teal:#3e8a74;--teal-d:#2f6b5a;--deep:#2c5a4d;--warm:#d08a5c;--warm-l:#fbf0e7;
+  --k0:#d08a5c;--k1:#8a6390;--k2:#6c8a4a;--k3:#3f7fa6;--k4:#5f737a;
+  --serif:"Noto Serif TC","Songti TC",serif;--sans:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;--en:"Cormorant Garamond","Times New Roman",serif}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f8f6;color:var(--body);font-family:var(--sans);font-size:16px;line-height:1.55}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.hd{position:sticky;top:0;z-index:20;background:var(--teal);color:#fff;padding:12px 28px;box-shadow:0 4px 14px -8px rgba(25,42,61,.4)}
+.hd .in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.15;margin-right:6px}
+.brand b{font-family:var(--serif);font-size:22px;letter-spacing:3px}
+.brand small{font-family:var(--en);font-style:italic;font-size:16px;opacity:.9}
+.stat{font-size:13.5px;background:rgba(31,78,87,.35);border:0;color:#fff;border-radius:999px;padding:3px 14px;white-space:nowrap}
+button.stat:hover{background:rgba(31,78,87,.55)}
+button.stat.on{background:#fff;color:var(--deep)}
+.stat b{font-weight:700}
+.sp{flex:1}
+.hb{display:inline-flex;align-items:center;gap:6px;border:0;text-decoration:none;color:#fff;background:rgba(255,255,255,.18);border-radius:999px;padding:6px 16px;font-size:14px;white-space:nowrap}
+.hb:hover{background:rgba(255,255,255,.32)}
+.hb.add{background:#fff;color:var(--deep);font-weight:700}
+.hb.add:hover{background:var(--soft)}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 28px 40px}
+/* 10/10 他：「新增地點就一個類似搜尋框就好」「框要更大、更顯眼」；配色他從五個候選挑過 1，又改成 2 霧藍綠深一階 #2f6474＋暖橘加入鈕 */
+.qbox{background:var(--teal-d);border-radius:26px;padding:20px 24px 18px;margin-bottom:22px;box-shadow:0 18px 40px -22px rgba(25,42,61,.7)}
+.qhd{display:flex;align-items:center;gap:8px;color:#fff;font-size:20px;font-weight:700;letter-spacing:2px;margin:0 4px 14px}
+.qhd .ic{width:22px;height:22px;stroke-width:2.6}
+.qa{display:flex;align-items:center;gap:14px;background:#fff;border:3px solid #fff;border-radius:999px;padding:8px 8px 8px 26px;box-shadow:0 6px 18px -8px rgba(10,30,35,.5)}
+.qa:focus-within{border-color:var(--warm-l);box-shadow:0 0 0 5px rgba(208,138,92,.35),0 6px 18px -8px rgba(10,30,35,.5)}
+.qa .ic{width:32px;height:32px;color:var(--warm)}
+.qa input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:24px;padding:18px 4px;color:var(--ink)}
+.qa input::placeholder{color:#9aa9ae}
+.qa button{border:0;border-radius:999px;background:var(--warm);color:#fff;font-size:21px;font-weight:700;letter-spacing:2px;padding:18px 44px;white-space:nowrap}
+.qa button:hover{background:#bb774b}
+.qa button:disabled{background:#e2bfa6;cursor:progress}
+.qah{font-size:14.5px;color:#fff;opacity:.95;margin:12px 8px 0}
+@media (max-width:640px){.qbox{padding:16px}.qa{padding:6px 6px 6px 16px;gap:8px}.qa .ic{width:24px;height:24px}.qa input{font-size:18px;padding:12px 2px}.qa button{font-size:17px;padding:12px 20px}}
+.cd.pend{border-style:dashed}
+.pb{font-family:var(--sans);font-size:12px;font-weight:600;color:var(--deep);background:var(--warm-l);border-radius:999px;padding:0 8px;flex:none}
+@keyframes flash{from{box-shadow:0 0 0 4px rgba(201,119,74,.55)}to{box-shadow:0 8px 20px -18px rgba(25,42,61,.5)}}
+.cd.new{animation:flash 2.4s ease-out}
+.wg{border-radius:22px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 30px -22px rgba(25,42,61,.4);margin-bottom:18px}
+.wt{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#fff;background:var(--warm);letter-spacing:1px;padding:9px 18px;border-radius:22px 22px 0 0;flex-wrap:wrap}
+.wt small{font-weight:400;opacity:.9;letter-spacing:.5px}
+.wt .sp{flex:1}
+.wt .tb{border:0;background:rgba(255,255,255,.24);color:#fff;border-radius:999px;padding:1px 14px;font-size:13.5px;font-weight:600}
+.wt .tb:hover{background:rgba(255,255,255,.4)}
+.wb{padding:14px 18px}
+/* 10/11 他從 places-quiz2.html 六版挑 2 深色舞台：跟誰去 → 在哪裡 → 想做什麼，一題一題問，取代原本「跟誰去」「找地方」兩塊 */
+.stg{background:linear-gradient(160deg,#2c5a4d,#3e8a74);border-radius:28px;padding:30px 34px 26px;color:#fff;position:relative;overflow:hidden;margin-bottom:22px;box-shadow:0 18px 40px -24px rgba(25,42,61,.7)}
+.stg::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
+.stg .dots{display:flex;gap:8px;margin-bottom:16px}.stg .dots i{width:34px;height:4px;border-radius:2px;background:rgba(255,255,255,.25)}.stg .dots i.on{background:#f2c19e}
+.stg h2{font-family:var(--serif);font-size:30px;margin:0 0 22px;letter-spacing:2px;font-weight:700}
+.stg .opts{display:flex;gap:12px;flex-wrap:wrap;position:relative;z-index:1}
+.stg .o{border:2px solid rgba(255,255,255,.35);background:transparent;border-radius:18px;padding:14px 24px;display:inline-flex;align-items:center;gap:12px;color:#fff;font-size:20px;font-weight:700}
+.stg .o .ic{width:28px;height:28px;stroke-width:1.8}
+.stg .o small{font-size:13px;font-weight:400;opacity:.75}
+.stg .o:hover{background:#f2c19e;border-color:#f2c19e;color:#2c5a4d}
+.stg .o.add{border-style:dashed;font-weight:400;font-size:17px;opacity:.85}
+.stg .sub{font-size:15px;opacity:.85;margin:-12px 0 4px}
+.stg .nav{display:flex;gap:6px 18px;flex-wrap:wrap;margin-top:18px;position:relative;z-index:1}
+.stg .nav button{border:0;background:none;color:rgba(255,255,255,.8);font-size:15px;padding:4px 0}
+.stg .nav button:hover{color:#fff;text-decoration:underline}
+@media (max-width:640px){.stg{padding:22px 18px}.stg h2{font-size:24px}.stg .o{font-size:17px;padding:11px 16px}}
+/* 跟誰去 */
+.who{display:flex;gap:8px;flex-wrap:wrap}
+.pc{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 16px 5px 6px;font-size:15px;color:var(--ink)}
+.pc i{font-style:normal;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--teal-d);font-weight:700;font-size:14px}
+.pc.none{padding-left:16px}
+.pc:hover{border-color:var(--warm)}
+.pc.on{background:var(--warm);border-color:var(--warm);color:#fff}
+.pc.on i{background:rgba(255,255,255,.3);color:#fff}
+.pc.new{border-style:dashed;color:var(--mute);padding-left:14px}
+.pinfo{margin-top:12px;background:var(--warm-l);border-radius:14px;padding:10px 14px;font-size:14.5px;display:flex;gap:6px 18px;flex-wrap:wrap;align-items:baseline}
+.pinfo b{color:var(--ink)}
+.pinfo .lr{color:var(--deep)}
+.pinfo button{margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:999px;padding:1px 12px;font-size:13px;color:var(--deep)}
+/* 篩選 */
+.flt{display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--soft);border-radius:999px;padding:3px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;border-radius:999px;padding:4px 13px;font-size:14px;color:var(--body);white-space:nowrap}
+.seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 4px rgba(25,42,61,.15)}
+.flt select,.flt input[type=search]{border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#fff;font-size:14px}
+.flt input[type=search]{flex:1;min-width:180px}
+.cnt{font-size:13.5px;color:var(--mute);margin:4px 2px 10px}
+/* 卡片 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;align-items:start}
+/* 10/11 他：「卡片不用那麼大張，小張最好」「附一張圖片，外觀照或最有特色的側面照」→ 照片橫幅 120 高、備註收成三行 */
+.cd .ph{display:block;margin:-6px -16px 2px -20px;height:120px;background:var(--soft) center/cover no-repeat}
+.nt.cl{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.nt.cl:hover{color:var(--ink)}
+.pb.run{background:var(--soft);color:var(--teal-d)}
+@keyframes blink{50%{opacity:.45}}.pb.run{animation:blink 1.4s ease-in-out infinite}
+.cd{position:relative;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px 10px 20px;display:flex;flex-direction:column;gap:5px;box-shadow:0 8px 20px -18px rgba(25,42,61,.5);overflow:hidden}
+.cd::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--kc,var(--k4))}
+.cd.done{background:#fafcfc}
+.cd h3{margin:0;font-family:var(--serif);font-size:18px;letter-spacing:1px;color:var(--ink);line-height:1.35;display:flex;gap:8px;align-items:baseline}
+.cd h3 .rk{font-family:var(--sans);font-size:12px;font-weight:700;color:#fff;background:var(--warm);border-radius:999px;padding:0 8px;flex:none}
+.cd .mt{font-size:13.5px;color:var(--mute);display:flex;gap:4px 10px;flex-wrap:wrap}
+.cd .mt b{font-weight:600;color:var(--kc,var(--k4))}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:12.5px;line-height:1.75;border-radius:999px;padding:0 9px;background:#eef5f7;color:var(--teal-d)}
+.tag.w{background:var(--warm-l);color:var(--deep)}
+.wh{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-14px -16px 4px -20px;padding:10px 16px 10px 20px;background:var(--soft);border-bottom:1px solid var(--line)}
+.wh b{font-size:14px;color:var(--teal-d);letter-spacing:1px;margin-right:2px}
+/* 10/11 他：「如何讓我輕易地分類，帶孩子去／帶岳母去」→ 卡片上直接點人，點一下就存；同日「按鈕大一點、放最上面，清楚屬性」 */
+.wh button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 15px;font-size:16px;font-weight:600;color:var(--ink);min-height:38px}
+.wh button:hover{border-color:var(--warm)}
+.wh button.on{background:var(--warm);border-color:var(--warm);color:#fff}
+.wh button.on::before{content:"✓ "}
+.wh button.ad{border-style:dashed;color:var(--mute);font-weight:400;padding:0;width:38px;font-size:18px}
+.why{font-size:13px;color:var(--deep);background:var(--warm-l);border-radius:10px;padding:4px 10px}
+.nt{font-size:13.5px;line-height:1.55;color:var(--body);white-space:pre-wrap}
+.vs{font-size:12.5px;color:var(--mute);border-top:1px dashed var(--line);padding-top:6px}
+.vs div{display:flex;gap:6px;align-items:center}
+.vs button{border:0;background:none;color:var(--mute);padding:0 4px;font-size:12px;margin-left:auto}
+.act{display:flex;gap:6px;margin-top:auto;padding-top:6px;flex-wrap:wrap}
+.act a,.act button{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 12px;font-size:13.5px;color:var(--teal-d);text-decoration:none}
+.act a:hover,.act button:hover{border-color:var(--teal);background:var(--soft)}
+.act .go{background:var(--deep);border-color:var(--deep);color:#fff}
+.act .go:hover{background:var(--teal-d)}
+.act .ic{width:15px;height:15px}
+.empty{text-align:center;color:var(--mute);padding:40px 16px;font-size:15px;line-height:1.9}
+.empty b{color:var(--ink)}
+details.out{margin-top:16px}
+details.out summary{cursor:pointer;color:var(--mute);font-size:14px;padding:6px 2px}
+details.out .grid{opacity:.75;margin-top:8px}
+/* 對話框 */
+dialog{border:0;border-radius:20px;padding:0;width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 40px);box-shadow:0 30px 60px -20px rgba(25,42,61,.5)}
+dialog::backdrop{background:rgba(25,42,61,.35)}
+dialog form{display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
+dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px 24px;letter-spacing:1px;font-weight:600}
+.fb{padding:20px 24px;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.fb label{display:flex;flex-direction:column;gap:5px;font-size:15px;color:var(--mute)}
+.fb label.f{grid-column:1/-1}
+.fb input,.fb select,.fb textarea{border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:17px;color:var(--ink);background:#fff;min-height:48px}
+.fb input:focus,.fb select:focus,.fb textarea:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal)}
+.fb textarea{min-height:110px;resize:vertical;line-height:1.6}
+.fb .hint{font-size:13px;color:var(--mute)}
+.chk{display:flex;gap:6px;flex-wrap:wrap}
+.chk button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 18px;font-size:16px;color:var(--ink)}
+.chk button.on{background:var(--warm);border-color:var(--warm);color:#fff}
+.fa{display:flex;gap:10px;padding:14px 24px 18px;border-top:1px solid var(--soft);align-items:center}
+.fa .sp{flex:1}
+.fa button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 24px;font-size:16px}
+.fa .ok{background:var(--deep);border-color:var(--deep);color:#fff;font-weight:700}
+.fa .del{color:#a33a2a;border-color:#ecc9c2}
+.fa .del.arm{background:#a33a2a;color:#fff}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:999px;padding:9px 20px;font-size:14.5px;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);z-index:50;display:none}
+@media (max-width:640px){
+  .hd{padding:10px 16px}.wrap{padding:16px 16px 40px}
+  .brand b{font-size:19px}.brand small{display:none}
+  .fb{grid-template-columns:1fr}
+  .flt input[type=search]{min-width:0;width:100%}
+}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+<symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+<symbol id="i-baby" viewBox="0 0 24 24"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></symbol>
+<symbol id="i-food" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+<symbol id="i-cup" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2M10 2v2M14 2v2"/></symbol>
+<symbol id="i-tree" viewBox="0 0 24 24"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7z"/><path d="M12 22v-3"/></symbol>
+<symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2Z"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+</defs></svg>
+<header class="hd"><div class="in">
+  <div class="brand"><b>外出待去清單</b><small>Places to go</small></div>
+  <button type="button" class="stat" data-s="want" title="看想去的">想去 <b id="nW">0</b></button><button type="button" class="stat" data-s="done" title="看去過的">去過 <b id="nD">0</b></button>
+  <span class="sp"></span>
+  <button type="button" class="hb" id="ghR" title="重新讀一次清單">更新</button>
+</div></header>
+<main class="wrap">
+  <section class="qbox">
+    <div class="qhd"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>新增地點</div>
+    <form class="qa" id="qa" autocomplete="off">
+      <svg class="ic" aria-hidden="true"><use href="#i-map-pin"/></svg>
+      <input id="qaT" type="text" placeholder="貼上 Google 地圖連結、座標或店名" aria-label="新增地點" enterkeyhint="done">
+      <button type="submit" id="qaB">加入</button>
+    </form>
+    <div class="qah" id="qaH">按 Enter 就加進清單。連結後面可以多打一句（例：想帶岳母去），會存進備註；家裡的 iMac 會自動查店名、地址和照片，一兩分鐘後就會出現。</div>
+  </section>
+  <section class="stg" id="stg"></section>
+  <div class="cnt" id="cnt"></div>
+  <div class="grid" id="grid"></div>
+  <div id="out"></div>
+</main>
+
+<dialog id="dP"><form method="dialog" id="fP">
+  <h2 id="dPt">新增地點</h2>
+  <div class="fb">
+    <label class="f">名稱<input name="name" required maxlength="80" placeholder="店名或景點名"></label>
+    <label>大類<select name="kind"></select></label>
+    <label>細類<input name="cat" maxlength="40" placeholder="火鍋、日式、步道、親子農場…" list="dlCat"></label>
+    <label>縣市<input name="city" maxlength="10" placeholder="宜蘭縣" list="dlCity"></label>
+    <label>鄉鎮區<input name="area" maxlength="20" placeholder="羅東鎮"></label>
+    <label class="f">標籤<input name="tags" maxlength="200" placeholder="用「、」分開：親子、有停車場、要訂位"><span class="hint">之後統整時會再整理成固定的屬性</span></label>
+    <label class="f">適合跟誰去<div class="chk" id="whoChk"></div></label>
+    <label class="f">連結<input name="link" maxlength="300" placeholder="Google 地圖、IG、文章網址"></label>
+    <label class="f">地址<input name="addr" maxlength="200"></label>
+    <label>營業時間<input name="hours" maxlength="120"></label>
+    <label>價位<input name="price" maxlength="60" placeholder="一人 300 左右"></label>
+    <label class="f">備註<textarea name="note" maxlength="600" placeholder="誰推薦的、想點什麼、要注意什麼"></textarea></label>
+    <label>狀態<select name="status"><option value="want">想去</option><option value="done">去過</option><option value="drop">先不去</option></select></label>
+  </div>
+  <div class="fa"><button type="button" class="del" id="pDel" hidden>刪除</button><span class="sp"></span><button value="cancel" formnovalidate>取消</button><button class="ok" value="ok">存起來</button></div>
+</form></dialog>
+
+<dialog id="dV"><form method="dialog" id="fV">
+  <h2 id="dVt">去過了</h2>
+  <div class="fb">
+    <label>哪一天<input type="date" name="date"></label>
+    <label>喜不喜歡<select name="like"><option value="1">喜歡，會再去</option><option value="0">普通</option><option value="-1">不太喜歡</option></select></label>
+    <label class="f">跟誰去<div class="chk" id="visChk"></div><span class="hint">選了誰，系統就記下「他喜不喜歡這一類」，之後推薦會跟著調</span></label>
+    <label class="f">一句話<textarea name="note" maxlength="300" placeholder="點了什麼、下次想試什麼"></textarea></label>
+  </div>
+  <div class="fa"><span class="sp"></span><button value="cancel" formnovalidate>取消</button><button class="ok" value="ok">記下來</button></div>
+</form></dialog>
+
+<dialog id="dU"><form method="dialog" id="fU">
+  <h2 id="dUt">加一個人</h2>
+  <div class="fb">
+    <label class="f">稱呼<input name="name" required maxlength="20" placeholder="岳母、爸媽、小孩、朋友 A"></label>
+    <label class="f">喜歡吃／喜歡去<input name="likes" maxlength="200" placeholder="用「、」分開：火鍋、台菜、湯"></label>
+    <label class="f">不吃／不去<input name="avoid" maxlength="200" placeholder="辣、生食、要爬坡"></label>
+    <label class="f">只去哪些縣市<input name="cities" maxlength="100" placeholder="宜蘭縣（空白＝不限）"></label>
+    <label class="f">備註<textarea name="note" maxlength="300" placeholder="膝蓋不好、要有停車位…"></textarea></label>
+  </div>
+  <div class="fa"><button type="button" class="del" id="uDel" hidden>刪除這個人</button><span class="sp"></span><button value="cancel" formnovalidate>取消</button><button class="ok" value="ok">存起來</button></div>
+</form></dialog>
+<datalist id="dlCat"></datalist><datalist id="dlCity"></datalist>
+<div class="toast" id="toast" role="status"></div>
+
+<!-- 2026-10-12 待去清單手機版（GitHub Pages）專用：kafu_places_sync.py 把這段插在主程式前面。
+     資料在私人 repo kafutw/places-data，手機第一次貼通行碼（fine-grained token，只能讀寫那一個 repo）存在手機裡；
+     讀：places.json；寫：每個動作丟成 inbox/<時間>.json，iMac 每分鐘套用（同一套 kafu_places.api）再推回 places.json -->
+<style>
+.gate{position:fixed;inset:0;z-index:60;background:#f4f8f6;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px}
+.gate .gb{width:100%;max-width:440px;background:var(--deep);color:#fff;border-radius:24px;padding:26px 22px;box-shadow:0 18px 40px -20px rgba(25,42,61,.6)}
+.gate h2{font-family:var(--serif);font-size:24px;margin:0 0 8px}
+.gate p{margin:0 0 16px;font-size:15.5px;line-height:1.6;opacity:.95}
+.gate input{width:100%;border:0;border-radius:14px;padding:14px 16px;font-size:16px;background:#fff;color:var(--ink)}
+.gate button{margin-top:12px;width:100%;border:0;border-radius:999px;padding:13px;font-size:17px;font-weight:700;background:var(--warm);color:#fff}
+.gate .gm{margin:12px 0 0;color:#ffd9c2;font-size:14.5px;min-height:1em}
+.ghs{font-size:13.5px;color:#fff;opacity:.85;margin:6px 8px 0}
+.ghs.warn{opacity:1;color:#ffd9c2}
+</style>
+<script>
+var GH = {repo:'kafutw/places-data', tk:'', applied:[], q:[], wn:0, synced:''};
+function ls(k, v){ try{ if(v === undefined) return localStorage.getItem(k); if(v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); }catch(e){ return null; } }
+GH.tk = ls('kafu-places-tk') || '';
+try{ GH.q = JSON.parse(ls('kafu-places-q') || '[]') || []; }catch(e){ GH.q = []; }
+function ghSaveQ(){ ls('kafu-places-q', JSON.stringify(GH.q)); }
+function ymd(){ var d = new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function b64(s){ var b = new TextEncoder().encode(s), x = ''; for(var i = 0; i < b.length; i++) x += String.fromCharCode(b[i]); return btoa(x); }
+function ghApi(path, opt){
+  opt = opt || {};
+  var h = {'Authorization':'Bearer '+GH.tk, 'X-GitHub-Api-Version':'2022-11-28', 'Accept':opt.raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json'};
+  return fetch('https://api.github.com/repos/'+GH.repo+'/'+path+(opt.method ? '' : (path.indexOf('?') < 0 ? '?' : '&')+'t='+Date.now()),
+               {method:opt.method || 'GET', headers:h, cache:'no-store', body:opt.body ? JSON.stringify(opt.body) : undefined})
+    .then(function(r){
+      if(r.status === 401){ ghGate('通行碼失效或打錯了，請重新貼一次'); throw {err:'通行碼失效'}; }
+      if(r.status === 404 && !opt.method) throw {err:'讀不到清單（通行碼可能沒勾到 places-data 這個 repo）'};
+      if(r.status === 403 || r.status === 404) throw {err:'這組通行碼沒有寫入權限（要選 Contents：Read and write）'};
+      if(!r.ok) throw {err:'GitHub 回 '+r.status+'，等一下再試'};
+      return opt.raw ? r.text() : r.json();
+    }, function(){ throw {err:'沒有網路，沒連上'}; });
+}
+// 先在手機上把結果算出來（跟 kafu_places.api 同樣的動作），iMac 套用後再以 places.json 為準
+function sim(req){
+  var x = req.id ? D.places.filter(function(p){ return p.id === req.id; })[0] : null, c = x ? JSON.parse(JSON.stringify(x)) : null, k;
+  if(/^(edit|visit|unvisit|del)$/.test(req.op) && !c) return null;
+  if(req.op === 'edit'){ for(k in req.p) c[k] = req.p[k]; return {ok:true, p:c}; }
+  if(req.op === 'visit'){ var v = req.v || {}; (c.visits = c.visits || []).push({date:v.date || D.today, 'with':v['with'] || [], like:v.like || 0, note:v.note || ''}); c.status = 'done'; return {ok:true, p:c}; }
+  if(req.op === 'unvisit'){ (c.visits = c.visits || []).splice(req.i, 1); if(!c.visits.length && c.status === 'done') c.status = 'want'; return {ok:true, p:c}; }
+  if(req.op === 'add' || req.op === 'quick'){
+    var s = req.op === 'quick' ? String(req.text || '').replace(/https?:\/\/\S+/g, '').trim() : '';
+    var p = req.op === 'add' ? JSON.parse(JSON.stringify(req.p)) : {name:s ? s.slice(0, 30) : '剛貼的地點', pending:true};
+    p.id = 'tmp_'+Math.random().toString(36).slice(2, 10); p.added = D.today; p.visits = []; p.status = p.status || 'want';
+    return {ok:true, id:p.id, p:p};
+  }
+  return {ok:true};
+}
+// 重新讀清單時，iMac 還沒套用的動作再疊一次上去，畫面才不會倒退
+function ghReplay(x){
+  var req = x.req, i = D.places.map(function(p){ return p.id; }).indexOf(req.id);
+  if(/^(edit|visit|unvisit)$/.test(req.op)){ var r = sim(req); if(r && i >= 0) D.places[i] = r.p; }
+  else if(req.op === 'del'){ if(i >= 0) D.places.splice(i, 1); }
+  else if(req.op === 'add' || req.op === 'quick'){ if(!D.places.some(function(p){ return p.id === x.res.p.id; })) D.places.push(x.res.p); }
+  else if(req.op === 'person'){ var j = D.people.map(function(p){ return p.name; }).indexOf(req.old || req.person.name); if(j >= 0) D.people[j] = req.person; else D.people.push(req.person); }
+  else if(req.op === 'pdel'){ D.people = D.people.filter(function(p){ return p.name !== req.name; }); }
+}
+function ghPost(req){
+  if(!GH.tk){ ghGate(); return Promise.reject({}); }
+  if(req.id && /^tmp_/.test(req.id)){ toast('這筆還在同步到 iMac，等一兩分鐘再改'); return Promise.reject({}); }
+  var res = sim(req);
+  if(!res){ toast('找不到這個地點，可能已經被刪了'); return Promise.reject({}); }
+  var n = Date.now()+'-'+Math.random().toString(36).slice(2, 8)+'.json';
+  return ghApi('contents/inbox/'+n, {method:'PUT', body:{message:'places '+req.op, content:b64(JSON.stringify(req))}}).then(function(){
+    GH.q.push({n:n, t:Date.now(), req:req, res:res}); ghSaveQ(); GH.wn = 0; ghStatus(); setTimeout(ghWatch, 0); return res;
+  }).catch(function(e){ toast((e && e.err) || '沒存到，再試一次'); throw e; });
+}
+function ghLoad(){
+  return ghApi('contents/places.json', {raw:true}).then(function(t){
+    var j = JSON.parse(t);
+    if(document.querySelector('dialog[open]')) return;        // 正在填表單就先不換資料
+    D.places = j.places || []; D.people = j.people || []; D.kinds = j.kinds || D.kinds; D.today = ymd();
+    GH.applied = j.applied || []; GH.synced = j.synced || '';
+    GH.q = GH.q.filter(function(x){ return GH.applied.indexOf(x.n) < 0 && Date.now() - x.t < 864e5; }); ghSaveQ();
+    GH.q.forEach(ghReplay);
+    draw(); ghStatus();
+  });
+}
+function ghWatch(){
+  clearTimeout(GH.w);
+  var busy = GH.q.length || D.places.some(function(p){ return p.pending && !p.auto_err; });
+  if(!busy || document.hidden || GH.wn > 45) return;
+  GH.w = setTimeout(function(){ GH.wn++; ghLoad().catch(function(){}).then(ghWatch); }, 15000);
+}
+function ghStatus(){
+  var e = document.getElementById('ghS');
+  if(!e){ e = document.createElement('div'); e.id = 'ghS'; e.className = 'ghs'; document.querySelector('.qbox').appendChild(e); }
+  var old = GH.synced && (Date.now() - new Date(GH.synced.replace(' ', 'T')).getTime()) > 3 * 36e5, t = '';
+  if(GH.q.length) t = '有 '+GH.q.length+' 筆正在交給家裡的 iMac 處理，大約一兩分鐘…';
+  if(old) t += (t ? '　' : '')+'家裡的 iMac 好像沒開（上次同步 '+GH.synced.slice(5)+'），新增的會等它開機後再處理。';
+  e.textContent = t; e.className = 'ghs'+(old ? ' warn' : ''); e.style.display = t ? '' : 'none';
+}
+function ghGate(msg){
+  var g = document.getElementById('gate');
+  if(!g){
+    g = document.createElement('div'); g.id = 'gate'; g.className = 'gate';
+    g.innerHTML = '<form class="gb" id="gF" autocomplete="off"><h2>外出待去清單</h2><p>第一次在這支手機打開，要貼一次通行碼（github_pat_ 開頭的一長串），之後就不用再貼了。</p>'
+      +'<input id="gT" type="password" placeholder="貼上通行碼" aria-label="通行碼" autocapitalize="off" spellcheck="false"><button type="submit" id="gB">開始用</button><p class="gm" id="gM"></p></form>';
+    document.body.appendChild(g);
+    document.getElementById('gF').addEventListener('submit', function(ev){
+      ev.preventDefault(); var v = document.getElementById('gT').value.trim(), b = document.getElementById('gB'); if(!v) return;
+      GH.tk = v; b.disabled = true; b.textContent = '確認中…'; document.getElementById('gM').textContent = '';
+      ghLoad().then(function(){ ls('kafu-places-tk', v); g.remove(); ghWatch(); }).catch(function(e){
+        GH.tk = ''; document.getElementById('gM').textContent = (e && e.err) || '讀不到清單'; }).then(function(){ b.disabled = false; b.textContent = '開始用'; });
+    });
+  }
+  document.getElementById('gM').textContent = msg || '';
+}
+function ghBoot(){
+  var r = document.getElementById('ghR');
+  if(r) r.addEventListener('click', function(){ ghLoad().then(function(){ toast('更新好了'); }).catch(function(e){ toast((e && e.err) || '沒更新到'); }); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden && GH.tk){ GH.wn = 0; ghLoad().catch(function(){}).then(ghWatch); } });
+  if(!GH.tk) return ghGate();
+  document.getElementById('cnt').textContent = '讀取清單中…';
+  ghLoad().then(ghWatch).catch(function(e){ document.getElementById('cnt').textContent = (e && e.err) || '讀不到清單'; });
+}
+</script>
+<script>
+var D = {places:[], people:[], kinds:["餐廳", "咖啡甜點", "景點", "住宿", "其他"], today:''};
+var KC = {'餐廳':'var(--k0)', '咖啡甜點':'var(--k1)', '景點':'var(--k2)', '住宿':'var(--k3)', '其他':'var(--k4)'};
+var ST = {who:'', kind:'', city:'', s:'want', q:''};     // 每次打開＝預設（工作台規則：當場切換不記住）
+(function(){ var m = /who=([^&]+)/.exec(location.hash); if(m) ST.who = decodeURIComponent(m[1]);   // 小工具點人／點最近加的／＋新增 帶進來
+  m = /q=([^&]+)/.exec(location.hash); if(m){ ST.q = decodeURIComponent(m[1]); ST.s = 'all'; } })();
+function $(s){ return document.querySelector(s); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function ico(n){ return '<svg class="ic" aria-hidden="true"><use href="#i-'+n+'"/></svg>'; }
+function list(s){ return String(s||'').split(/[、,，\n]/).map(function(x){ return x.trim(); }).filter(Boolean); }
+function toast(t){ var e = $('#toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function(){ e.style.display = 'none'; }, 2600); }
+function post(req){ return ghPost(req); }
+function person(n){ return D.people.filter(function(p){ return p.name === n; })[0]; }
+function words(p){ return [p.kind||'', p.cat||''].concat(p.tags||[]); }
+
+// ---- 學喜好＋推薦（跟 kafu_places.py 的 learned／score 同一套）----
+function learned(name){
+  var w = {};
+  D.places.forEach(function(p){ (p.visits||[]).forEach(function(v){
+    if((v['with']||[]).indexOf(name) < 0 || !v.like) return;
+    words(p).slice(1).forEach(function(t){ if(t) w[t] = (w[t]||0) + (v.like > 0 ? 1 : -1); }); }); });
+  return w;
+}
+function score(p, pe, lw){
+  var why = [], s = 0, hay = words(p).concat([p.name||'', p.note||'']).join(' ');
+  if(pe.cities.length && p.city && pe.cities.indexOf(p.city) < 0) return {s:null, why:['不在'+pe.cities.join('、')]};
+  for(var i = 0; i < pe.avoid.length; i++) if(pe.avoid[i] && hay.indexOf(pe.avoid[i]) >= 0) return {s:null, why:[pe.name+'不'+pe.avoid[i]]};
+  if((p.who||[]).indexOf(pe.name) >= 0){ s += 3; why.push('標過適合'+pe.name); }
+  pe.likes.forEach(function(k){ if(k && hay.indexOf(k) >= 0){ s += 2; why.push(pe.name+'喜歡'+k); } });
+  Object.keys(lw).forEach(function(t){ var n = lw[t]; if(n && words(p).indexOf(t) >= 0){ s += n; why.push((n > 0 ? '跟'+pe.name+'去過的'+t+'都喜歡' : '跟'+pe.name+'去過的'+t+'不喜歡')); } });
+  if(pe.cities.length && pe.cities.indexOf(p.city) >= 0) why.push('在'+p.city);
+  return {s:s, why:why};
+}
+
+// ---- 畫面 ----
+var QZ = {step:0}, QK = ['who', 'city', 'kind'];
+var ACT = [{v:'餐廳', t:'吃東西', i:'food'}, {v:'咖啡甜點', t:'喝咖啡', i:'cup'}, {v:'景點', t:'出去走走', i:'tree'}, {v:'住宿', t:'住一晚', i:'bed'}];
+function qlabel(k, v){ if(k === 'who') return v ? '跟'+v : '自己想去'; if(k === 'city') return v || '哪裡都可以'; return v ? ACT.filter(function(a){ return a.v === v; })[0].t : '都可以'; }
+function drawStage(){
+  var cs = {}; D.places.forEach(function(p){ if(p.city && (p.status||'want') === (ST.s === 'done' ? 'done' : 'want')) cs[p.city] = (cs[p.city]||0) + 1; });
+  var Q = [
+    {q:'這次跟誰去？', o:[{v:'', t:'自己想去', i:'users'}].concat(D.people.map(function(p){ return {v:p.name, t:p.name, i:/孩|小孩|兒|女/.test(p.name) ? 'baby' : 'heart'}; }))},
+    {q:'想在哪裡？', o:[{v:'', t:'哪裡都可以', i:'globe'}].concat(Object.keys(cs).sort(function(a, b){ return cs[b] - cs[a]; }).map(function(c){ return {v:c, t:c, i:'map-pin'}; }))},
+    {q:'想做什麼？', o:[{v:'', t:'都可以', i:'spark'}].concat(ACT)}
+  ];
+  var h = '<div class="dots">'+[0,1,2].map(function(i){ return '<i'+(i < QZ.step + (QZ.step < 3 ? 1 : 0) ? ' class="on"' : '')+'></i>'; }).join('')+'</div>';
+  if(QZ.step < 3){
+    var q = Q[QZ.step], k = QK[QZ.step];
+    h += '<h2>'+q.q+'</h2><div class="opts">'+q.o.map(function(o){ var t = {}; for(var x in ST) t[x] = ST[x]; t[k] = o.v;
+      return '<button type="button" class="o" data-qz="'+esc(o.v)+'">'+ico(o.i)+esc(o.t)+'<small>'+pick(t).ok.length+'</small></button>'; }).join('')
+      +(QZ.step === 0 ? '<button type="button" class="o add" data-pnew>＋ 加人</button>' : '')+'</div>';
+  } else {
+    var n = pick(ST).ok.length;
+    h += '<h2>'+QK.map(function(k){ return qlabel(k, ST[k]); }).join('・')+'</h2><div class="sub">'+(n ? '找到 '+n+' 個'+(ST.s === 'done' ? '去過的' : '')+'，在下面' : '這樣選沒有符合的，退一步換個選項看看')+'</div>';
+  }
+  if(QZ.step) h += '<div class="nav"><button type="button" data-qb>← 上一題</button><button type="button" data-qr>重新選</button>'
+    +(QZ.step === 3 && ST.who ? '<button type="button" data-pedit="'+esc(ST.who)+'">修改'+esc(ST.who)+'的喜好</button>' : '')+'</div>';
+  $('#stg').innerHTML = h;
+  var ct = {}; D.places.forEach(function(p){ if(p.cat) ct[p.cat] = 1; });
+  $('#dlCat').innerHTML = Object.keys(ct).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
+  $('#dlCity').innerHTML = Object.keys(cs).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
+}
+// 依目前選的條件挑地點：有選人時，標過他或對上他喜好的放前面（ok），其他收進「還沒標」
+function pick(st){
+  var q = (st.q||'').trim(), pe = person(st.who), lw = pe ? learned(pe.name) : {};
+  var rows = D.places.filter(function(p){
+    var s = p.status || 'want';
+    if(st.s === 'want' && s !== 'want') return false;
+    if(st.s === 'done' && s !== 'done') return false;
+    if(st.kind && p.kind !== st.kind) return false;
+    if(st.city && p.city !== st.city) return false;
+    if(q && [p.name, p.cat, p.city, p.area, p.note, p.addr].concat(p.tags||[], p.who||[]).join(' ').toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
+    return true; });
+  var ok = [], out = [];
+  rows.forEach(function(p){ var r = pe ? score(p, pe, lw) : null; (!r || r.s > 0 ? ok : out).push({p:p, r:r}); });
+  ok.sort(function(a, b){ return (b.r ? b.r.s : 0) - (a.r ? a.r.s : 0) || String(b.p.added).localeCompare(String(a.p.added)) || D.places.indexOf(b.p) - D.places.indexOf(a.p); });
+  return {ok:ok, out:out, pe:pe};
+}
+function mapUrl(p){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.name+' '+(p.addr || ((p.city||'')+(p.area||'')))); }
+function card(p, r, rank){
+  var vs = (p.visits||[]).map(function(v, i){ return '<div>'+esc(v.date.slice(5).replace('-', '/'))+(v['with'] && v['with'].length ? '・跟'+esc(v['with'].join('、')) : '')
+    +'・'+({'1':'喜歡', '0':'普通', '-1':'不太喜歡'})[String(v.like)]+(v.note ? '・'+esc(v.note) : '')+'<button type="button" data-unv="'+p.id+'" data-i="'+i+'" title="刪掉這筆紀錄">×</button></div>'; }).join('');
+  var isLink = /^https?:\/\//.test(p.link||'');
+  return '<article class="cd'+(p.status === 'done' ? ' done' : '')+(p.pending ? ' pend' : '')+(p.id === NEW ? ' new' : '')+'" style="--kc:'+(KC[p.kind]||KC['其他'])+'">'
+    +'<div class="wh"><b>跟誰去</b>'+D.people.map(function(pe){ return '<button type="button" data-tw="'+p.id+'" data-n="'+esc(pe.name)+'"'+((p.who||[]).indexOf(pe.name) >= 0 ? ' class="on"' : '')+'>'+esc(pe.name)+'</button>'; }).join('')
+      +'<button type="button" class="ad" data-tw="'+p.id+'" data-n="" title="加一個人，並標在這個地點">＋</button></div>'
+    +(p.img ? '<a class="ph" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener" title="開 Google 地圖" style="background-image:url(img/'+p.id+'.jpg?v='+esc(p.img)+')"></a>' : '')
+    +'<h3>'+(rank ? '<span class="rk">'+rank+'</span>' : '')+esc(p.name)+(p.pending ? (p.auto_err ? '<span class="pb" title="自動查資料沒成功：'+esc(p.auto_err)+'">待整理</span>' : '<span class="pb run" title="正在自動開 Google 地圖查資料">查資料中…</span>') : '')+'</h3>'
+    +'<div class="mt"><b>'+esc(p.kind||'未分類')+(p.cat ? '・'+esc(p.cat) : '')+'</b><span>'+esc((p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
+    +(p.price ? '<span>'+esc(p.price)+'</span>' : '')+(p.status === 'drop' ? '<span>先不去</span>' : '')+'</div>'
+    +((p.tags||[]).length ? '<div class="tags">'+(p.tags||[]).map(function(t){ return '<span class="tag">'+esc(t)+'</span>'; }).join('')+'</div>' : '')
+
+    +(r && r.why.length ? '<div class="why">'+esc(r.why.join('・'))+'</div>' : '')
+    +(p.note ? '<div class="nt cl" data-more title="點一下看全部">'+esc(p.note)+'</div>' : '')
+    +(p.hours ? '<div class="mt">'+esc(p.hours)+'</div>' : '')
+    +(vs ? '<div class="vs">'+vs+'</div>' : '')
+    +'<div class="act"><a class="go" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener">'+ico('map-pin')+'地圖</a>'
+    +(isLink ? '<a href="'+esc(p.link)+'" target="_blank" rel="noopener">'+ico('link')+'連結</a>' : '')
+    +'<button type="button" data-vis="'+p.id+'">'+ico('check')+'去過了</button>'
+    +'<button type="button" data-ed="'+p.id+'">'+ico('pencil')+'修改</button></div></article>';
+}
+function draw(){
+  $('#nW').textContent = D.places.filter(function(p){ return (p.status||'want') === 'want'; }).length;
+  $('#nD').textContent = D.places.filter(function(p){ return p.status === 'done'; }).length;
+  [].forEach.call(document.querySelectorAll('.hd .stat'), function(b){ b.classList.toggle('on', b.getAttribute('data-s') === ST.s); });
+  drawStage();
+  var r = pick(ST), ok = r.ok, out = r.out, pe = r.pe;
+  $('#cnt').textContent = D.places.length ? (ST.s === 'done' ? '去過的 ' : ST.s === 'all' ? '全部 ' : '')+ok.length+' 個'+(pe && ok.length ? '，照'+pe.name+'的喜好排' : '') : '';
+  $('#grid').innerHTML = ok.map(function(x, i){ return card(x.p, x.r, pe && x.r.s > 0 ? i + 1 : 0); }).join('')
+    || (D.places.length ? '<div class="empty" style="grid-column:1/-1">這個條件下沒有地點'+(pe && out.length ? '，下面有還沒標「'+esc(pe.name)+'」的可以看看' : '，換一個看看')+'。</div>'
+       : '<div class="empty" style="grid-column:1/-1"><b>清單還是空的。</b><br>把 Google 地圖連結貼到最上面的框按 Enter，<br>或直接丟給 Claude 也可以。</div>');
+  $('#out').innerHTML = out.length ? '<details class="out"><summary>還沒標適合'+esc(pe.name)+'的 '+out.length+' 個（卡片上點「'+esc(pe.name)+'」就會移上來）</summary><div class="grid">'
+    +out.map(function(x){ return card(x.p, x.r, 0); }).join('')+'</div></details>' : '';
+}
+
+// ---- 地點表單 ----
+var EDIT = null;
+function chk(box, sel){
+  $(box).innerHTML = D.people.length ? D.people.map(function(p){ return '<button type="button" data-c="'+esc(p.name)+'"'+(sel.indexOf(p.name) >= 0 ? ' class="on"' : '')+'>'+esc(p.name)+'</button>'; }).join('')
+    : '<span class="hint">還沒有人，上面「跟誰去」可以加</span>';
+}
+function picked(box){ return [].map.call(document.querySelectorAll(box+' button.on'), function(b){ return b.getAttribute('data-c'); }); }
+function openP(p){
+  EDIT = p || null; var f = $('#fP');
+  f.kind.innerHTML = D.kinds.map(function(k){ return '<option>'+k+'</option>'; }).join('');
+  ['name','kind','cat','city','area','link','addr','hours','price','note','status'].forEach(function(k){ f[k].value = p ? (p[k]||'') : ''; });
+  if(!p){ f.kind.value = ST.kind || '餐廳'; f.status.value = 'want'; f.city.value = ST.city || ''; }
+  f.tags.value = p ? (p.tags||[]).join('、') : '';
+  chk('#whoChk', p ? (p.who||[]) : (ST.who ? [ST.who] : []));
+  $('#dPt').textContent = p ? '修改：'+p.name : '新增地點';
+  var del = $('#pDel'); del.hidden = !p; del.classList.remove('arm'); del.textContent = '刪除';
+  $('#dP').showModal();
+}
+$('#fP').addEventListener('submit', function(e){
+  if(e.submitter && e.submitter.value !== 'ok') return;
+  e.preventDefault(); var f = e.target, v = {};
+  ['name','kind','cat','city','area','link','addr','hours','price','note','status'].forEach(function(k){ v[k] = f[k].value.trim(); });
+  v.tags = list(f.tags.value); v.who = picked('#whoChk');
+  var req = EDIT ? {op:'edit', id:EDIT.id, p:v} : {op:'add', p:v};
+  post(req).then(function(j){
+    if(EDIT){ var i = D.places.indexOf(EDIT); D.places[i] = j.p; } else D.places.push(j.p);
+    $('#dP').close(); draw(); toast(EDIT ? '改好了' : '「'+j.p.name+'」加進清單了'); }).catch(function(){});
+});
+$('#pDel').addEventListener('click', function(){
+  var b = this; if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent = '再按一次確定刪除'; return; }
+  post({op:'del', id:EDIT.id}).then(function(){ D.places = D.places.filter(function(x){ return x !== EDIT; }); $('#dP').close(); draw(); toast('刪掉了'); }).catch(function(){});
+});
+// ---- 去過了 ----
+var VIS = null;
+function openV(p){
+  VIS = p; var f = $('#fV'); f.date.value = D.today; f.like.value = '1'; f.note.value = '';
+  chk('#visChk', ST.who ? [ST.who] : []); $('#dVt').textContent = '去過了：'+p.name; $('#dV').showModal();
+}
+$('#fV').addEventListener('submit', function(e){
+  if(e.submitter && e.submitter.value !== 'ok') return;
+  e.preventDefault(); var f = e.target;
+  post({op:'visit', id:VIS.id, v:{date:f.date.value, like:+f.like.value, note:f.note.value, 'with':picked('#visChk')}}).then(function(j){
+    D.places[D.places.indexOf(VIS)] = j.p; $('#dV').close(); draw(); toast('記下來了，移到「去過」'); }).catch(function(){});
+});
+// ---- 人 ----
+var PED = null;
+function openU(name){
+  var pe = name ? person(name) : null; PED = pe; var f = $('#fU');
+  f.name.value = pe ? pe.name : ''; f.likes.value = pe ? pe.likes.join('、') : ''; f.avoid.value = pe ? pe.avoid.join('、') : '';
+  f.cities.value = pe ? pe.cities.join('、') : ''; f.note.value = pe ? pe.note : '';
+  $('#dUt').textContent = pe ? '修改：'+pe.name : '加一個人';
+  var del = $('#uDel'); del.hidden = !pe; del.classList.remove('arm'); del.textContent = '刪除這個人';
+  $('#dU').showModal();
+}
+$('#fU').addEventListener('submit', function(e){
+  if(e.submitter && e.submitter.value !== 'ok') return;
+  e.preventDefault(); var f = e.target;
+  var pe = {name:f.name.value.trim(), likes:list(f.likes.value), avoid:list(f.avoid.value), cities:list(f.cities.value), note:f.note.value.trim()};
+  var old = PED ? PED.name : '';
+  post({op:'person', person:pe, old:old}).then(function(){
+    if(PED){ D.people[D.people.indexOf(PED)] = pe;
+      if(old !== pe.name) D.places.forEach(function(p){ p.who = (p.who||[]).map(function(w){ return w === old ? pe.name : w; });
+        (p.visits||[]).forEach(function(v){ v['with'] = (v['with']||[]).map(function(w){ return w === old ? pe.name : w; }); }); }); }
+    else D.people.push(pe);
+    ST.who = pe.name; if(QZ.step === 0) QZ.step = 1; $('#dU').close(); draw(); toast('存好了'); }).catch(function(){});
+});
+$('#uDel').addEventListener('click', function(){
+  var b = this; if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent = '再按一次確定'; return; }
+  post({op:'pdel', name:PED.name}).then(function(){ D.people = D.people.filter(function(x){ return x !== PED; }); if(ST.who === PED.name) ST.who = ''; $('#dU').close(); draw(); }).catch(function(){});
+});
+
+// ---- 事件 ----
+document.addEventListener('click', function(e){
+  var nt = e.target.closest('[data-more]'); if(nt){ nt.classList.toggle('cl'); return; }
+  var t = e.target.closest('button,a'); if(!t) return;
+  var a = function(n){ return t.getAttribute(n); };
+  if(a('data-qz') != null){ ST[QK[QZ.step]] = a('data-qz'); QZ.step++; draw(); }
+  else if(t.hasAttribute('data-qb')){ QZ.step--; ST[QK[QZ.step]] = ''; draw(); }
+  else if(t.hasAttribute('data-qr')){ QZ.step = 0; ST.who = ''; ST.city = ''; ST.kind = ''; draw(); }
+  else if(t.hasAttribute('data-pnew')) openU('');
+  else if(a('data-pedit')) openU(a('data-pedit'));
+  else if(a('data-k') != null){ ST.kind = a('data-k'); draw(); }
+  else if(a('data-s')){ ST.s = ST.s === a('data-s') && ST.s !== 'want' ? 'want' : a('data-s'); draw(); }
+  else if(a('data-ed')) openP(D.places.filter(function(p){ return p.id === a('data-ed'); })[0]);
+  else if(a('data-vis')) openV(D.places.filter(function(p){ return p.id === a('data-vis'); })[0]);
+  else if(a('data-unv')){ var p = D.places.filter(function(x){ return x.id === a('data-unv'); })[0];
+    if(!confirm('刪掉這筆去過的紀錄？')) return;
+    post({op:'unvisit', id:p.id, i:+a('data-i')}).then(function(j){ D.places[D.places.indexOf(p)] = j.p; draw(); }).catch(function(){}); }
+  else if(a('data-tw')) tagWho(D.places.filter(function(x){ return x.id === a('data-tw'); })[0], a('data-n'));
+  else if(a('data-c') != null) t.classList.toggle('on');
+});
+// ---- 卡片上點人：標／取消「適合跟誰去」，點了就存 ----
+function tagWho(p, n){
+  var add = function(){ var w = (p.who||[]).slice(), i = w.indexOf(n); if(i >= 0) w.splice(i, 1); else w.push(n);
+    post({op:'edit', id:p.id, p:{who:w}}).then(function(j){ D.places[D.places.indexOf(p)] = j.p; draw(); toast(i >= 0 ? '拿掉了：'+n : '「'+p.name+'」標成適合帶'+n+'去'); }).catch(function(){}); };
+  if(n) return add();
+  n = (prompt('加一個人（例：孩子、爸媽、朋友）') || '').trim(); if(!n) return;
+  if(person(n)) return add();
+  post({op:'person', person:{name:n, likes:[], avoid:[], cities:[], note:''}}).then(function(){ D.people.push({name:n, likes:[], avoid:[], cities:[], note:''}); add(); }).catch(function(){});
+}
+var NEW = '';
+// 10/11 貼上地點後背景會自動開 Google 地圖查資料（kafu_places_enrich.py），每 3 秒問一次，查完卡片自己更新
+function poll(id, n){ ghWatch(); }
+$('#qa').addEventListener('submit', function(e){
+  e.preventDefault(); var t = $('#qaT').value.trim(), b = $('#qaB'); if(!t) return;
+  b.disabled = true; b.textContent = '查地點中…';
+  post({op:'quick', text:t}).then(function(j){
+    D.places.push(j.p); NEW = j.p.id; $('#qaT').value = '';
+    ST.kind = ''; ST.city = ''; ST.who = ''; ST.s = 'want'; ST.q = ''; QZ.step = 0;
+    draw(); toast('「'+j.p.name+'」加進清單了'+(j.p.city ? '（'+j.p.city+(j.p.area||'')+'）' : ''));
+    var el = document.querySelector('.cd.new'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    poll(j.p.id, 0);
+  }).catch(function(){}).then(function(){ b.disabled = false; b.textContent = '加入'; });
+});
+if(ST.who) QZ.step = 1;
+D.places.forEach(function(p){ if(p.pending && !p.auto_err) poll(p.id, 0); });   // 打開頁面時還在查的，也接著等   // 從小工具／網址帶人進來：第一題已經答了
+ghBoot();
+if(/^#add/.test(location.hash)){ history.replaceState(null, '', location.pathname); $('#qaT').focus(); }
+</script></body></html>
