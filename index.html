@@ -91,10 +91,12 @@ button.stat.on{background:#fff;color:var(--deep)}
 .flt input[type=search]{flex:1;min-width:180px}
 .cnt{font-size:13.5px;color:var(--mute);margin:4px 2px 10px}
 /* 卡片 */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;align-items:start}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;align-items:stretch}
 /* 10/11 他：「卡片不用那麼大張，小張最好」「附一張圖片，外觀照或最有特色的側面照」→ 照片橫幅 120 高、備註收成三行 */
-.cd .ph{display:block;margin:-6px -16px 2px -20px;height:120px;background:var(--soft) center/cover no-repeat}
-.nt.cl{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+/* 10/29 他從 places-layout.html 五版挑 2「照片在最上面」：照片當封面貼頂端、同一排等高、「跟誰去」縮成一排移到按鈕上方；沒照片的補同高色塊，標題才會對齊 */
+.cd .ph{display:block;margin:-14px -16px 4px -20px;height:120px;background:var(--soft) center/cover no-repeat;flex:none}
+.cd .ph.none{background:color-mix(in srgb,var(--kc,var(--k4)) 14%,#fff) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23a9b9b4%27 stroke-width=%271.6%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0%27/%3E%3Ccircle cx=%2712%27 cy=%2710%27 r=%273%27/%3E%3C/svg%3E") center/38px no-repeat}
+.nt.cl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
 .nt.cl:hover{color:var(--ink)}
 .pb.run{background:var(--soft);color:var(--teal-d)}
 @keyframes blink{50%{opacity:.45}}.pb.run{animation:blink 1.4s ease-in-out infinite}
@@ -105,28 +107,30 @@ button.stat.on{background:#fff;color:var(--deep)}
 .cd h3 .rk{font-family:var(--sans);font-size:12px;font-weight:700;color:#fff;background:var(--warm);border-radius:999px;padding:0 8px;flex:none}
 .cd .mt{font-size:13.5px;color:var(--mute);display:flex;gap:4px 10px;flex-wrap:wrap}
 .cd .mt b{font-weight:600;color:var(--kc,var(--k4))}
-.tags{display:flex;gap:5px;flex-wrap:wrap}
-.tag{font-size:12.5px;line-height:1.75;border-radius:999px;padding:0 9px;background:#eef5f7;color:var(--teal-d)}
+.tags{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
+.tag{flex:none;font-size:12.5px;line-height:1.75;border-radius:999px;padding:0 9px;background:#eef5f7;color:var(--teal-d)}
 .tag.w{background:var(--warm-l);color:var(--deep)}
-.wh{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-14px -16px 4px -20px;padding:10px 16px 10px 20px;background:var(--soft);border-bottom:1px solid var(--line)}
-.wh b{font-size:14px;color:var(--teal-d);letter-spacing:1px;margin-right:2px}
+.wh{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;margin:auto -16px 0 -20px;padding:8px 16px 8px 20px;background:#fafcfb;border-top:1px solid var(--line)}
+.wh b{font-size:13px;color:var(--teal-d);letter-spacing:1px;white-space:nowrap}
 /* 10/11 他：「如何讓我輕易地分類，帶孩子去／帶岳母去」→ 卡片上直接點人，點一下就存；同日「按鈕大一點、放最上面，清楚屬性」 */
-.wh button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 15px;font-size:16px;font-weight:600;color:var(--ink);min-height:38px}
+.wh button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:3px 11px;font-size:14.5px;font-weight:600;color:var(--ink);min-height:32px;white-space:nowrap}
 .wh button:hover{border-color:var(--warm)}
 .wh button.on{background:var(--warm);border-color:var(--warm);color:#fff}
 .wh button.on::before{content:"✓ "}
-.wh button.ad{border-style:dashed;color:var(--mute);font-weight:400;padding:0;width:38px;font-size:18px}
+.wh button.ad{border-style:dashed;color:var(--mute);font-weight:400;padding:0;width:32px;font-size:16px;flex:none}
 .why{font-size:13px;color:var(--deep);background:var(--warm-l);border-radius:10px;padding:4px 10px}
 .nt{font-size:13.5px;line-height:1.55;color:var(--body);white-space:pre-wrap}
 .vs{font-size:12.5px;color:var(--mute);border-top:1px dashed var(--line);padding-top:6px}
 .vs div{display:flex;gap:6px;align-items:center}
 .vs button{border:0;background:none;color:var(--mute);padding:0 4px;font-size:12px;margin-left:auto}
-.act{display:flex;gap:6px;margin-top:auto;padding-top:6px;flex-wrap:wrap}
-.act a,.act button{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 12px;font-size:13.5px;color:var(--teal-d);text-decoration:none}
+.act{display:flex;gap:5px;margin:0 -16px -10px -20px;padding:8px 16px 10px 20px;background:#fafcfb;flex-wrap:nowrap}
+.act a,.act button{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 9px;font-size:13px;color:var(--teal-d);text-decoration:none;white-space:nowrap}
+.act .ed{margin-left:auto;padding:3px 8px}
 .act a:hover,.act button:hover{border-color:var(--teal);background:var(--soft)}
 .act .go{background:var(--deep);border-color:var(--deep);color:#fff}
 .act .go:hover{background:var(--teal-d)}
-.act .ic{width:15px;height:15px}
+.act .ic{width:14px;height:14px}.act .ed .ic{width:15px;height:15px}
+.cd .hr{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .empty{text-align:center;color:var(--mute);padding:40px 16px;font-size:15px;line-height:1.9}
 .empty b{color:var(--ink)}
 details.out{margin-top:16px}
@@ -449,9 +453,7 @@ function card(p, r, rank){
     +'・'+({'1':'喜歡', '0':'普通', '-1':'不太喜歡'})[String(v.like)]+(v.note ? '・'+esc(v.note) : '')+'<button type="button" data-unv="'+p.id+'" data-i="'+i+'" title="刪掉這筆紀錄">×</button></div>'; }).join('');
   var isLink = /^https?:\/\//.test(p.link||'');
   return '<article class="cd'+(p.status === 'done' ? ' done' : '')+(p.pending ? ' pend' : '')+(p.id === NEW ? ' new' : '')+'" style="--kc:'+(KC[p.kind]||KC['其他'])+'">'
-    +'<div class="wh"><b>跟誰去</b>'+D.people.map(function(pe){ return '<button type="button" data-tw="'+p.id+'" data-n="'+esc(pe.name)+'"'+((p.who||[]).indexOf(pe.name) >= 0 ? ' class="on"' : '')+'>'+esc(pe.name)+'</button>'; }).join('')
-      +'<button type="button" class="ad" data-tw="'+p.id+'" data-n="" title="加一個人，並標在這個地點">＋</button></div>'
-    +(p.img ? '<a class="ph" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener" title="開 Google 地圖" style="background-image:url(img/'+p.id+'.jpg?v='+esc(p.img)+')"></a>' : '')
+    +(p.img ? '<a class="ph" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener" title="開 Google 地圖" style="background-image:url(img/'+p.id+'.jpg?v='+esc(p.img)+')"></a>' : '<div class="ph none"></div>')
     +'<h3>'+(rank ? '<span class="rk">'+rank+'</span>' : '')+esc(p.name)+(p.pending ? (p.auto_err ? '<span class="pb" title="自動查資料沒成功：'+esc(p.auto_err)+'">待整理</span>' : '<span class="pb run" title="正在自動開 Google 地圖查資料">查資料中…</span>') : '')+'</h3>'
     +'<div class="mt"><b>'+esc(p.kind||'未分類')+(p.cat ? '・'+esc(p.cat) : '')+'</b><span>'+esc((p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
     +(p.price ? '<span>'+esc(p.price)+'</span>' : '')+(p.status === 'drop' ? '<span>先不去</span>' : '')+'</div>'
@@ -459,12 +461,14 @@ function card(p, r, rank){
 
     +(r && r.why.length ? '<div class="why">'+esc(r.why.join('・'))+'</div>' : '')
     +(p.note ? '<div class="nt cl" data-more title="點一下看全部">'+esc(p.note)+'</div>' : '')
-    +(p.hours ? '<div class="mt">'+esc(p.hours)+'</div>' : '')
+    +(p.hours ? '<div class="mt hr" title="'+esc(p.hours)+'">'+esc(p.hours)+'</div>' : '')
     +(vs ? '<div class="vs">'+vs+'</div>' : '')
+    +'<div class="wh"><b>跟誰去</b>'+D.people.map(function(pe){ return '<button type="button" data-tw="'+p.id+'" data-n="'+esc(pe.name)+'"'+((p.who||[]).indexOf(pe.name) >= 0 ? ' class="on"' : '')+'>'+esc(pe.name)+'</button>'; }).join('')
+      +'<button type="button" class="ad" data-tw="'+p.id+'" data-n="" title="加一個人，並標在這個地點">＋</button></div>'
     +'<div class="act"><a class="go" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener">'+ico('map-pin')+'地圖</a>'
     +(isLink ? '<a href="'+esc(p.link)+'" target="_blank" rel="noopener">'+ico('link')+'連結</a>' : '')
     +'<button type="button" data-vis="'+p.id+'">'+ico('check')+'去過了</button>'
-    +'<button type="button" data-ed="'+p.id+'">'+ico('pencil')+'修改</button></div></article>';
+    +'<button type="button" class="ed" data-ed="'+p.id+'" title="修改" aria-label="修改">'+ico('pencil')+'</button></div></article>';
 }
 function draw(){
   $('#nW').textContent = D.places.filter(function(p){ return (p.status||'want') === 'want'; }).length;
