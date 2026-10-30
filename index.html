@@ -94,7 +94,21 @@ button.stat.near:hover{background:#bb774b}
 .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 4px rgba(25,42,61,.15)}
 .flt select,.flt input[type=search]{border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#fff;font-size:14px}
 .flt input[type=search]{flex:1;min-width:180px}
-.cnt{font-size:13.5px;color:var(--mute);margin:4px 2px 10px}
+.cnt{font-size:13.5px;color:var(--mute)}
+/* 10/30 他：「有沒有可以批次刪除的選項？夜市那四個一次點選然後刪掉」→ 數量旁邊「選取」：點卡片打勾、底下一條列「刪除」 */
+.cntw{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 2px 10px}
+.selb{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 14px;font-size:13.5px;color:var(--teal-d)}
+.selb:hover{border-color:var(--teal)}
+.sel .selb{background:var(--deep);border-color:var(--deep);color:#fff}
+.sel .cd{cursor:pointer}.sel .cd .wh,.sel .cd .act{opacity:.45}
+.sel .cd::after{content:"";position:absolute;top:8px;left:12px;width:28px;height:28px;border-radius:50%;border:2.5px solid #fff;background:rgba(20,40,35,.3);box-shadow:0 1px 4px rgba(0,0,0,.3);z-index:3}
+.sel .cd.pick::after{background:var(--warm) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%273.2%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M20 6 9 17l-5-5%27/%3E%3C/svg%3E") center/16px no-repeat}
+.sel .cd.pick{outline:3px solid var(--warm);outline-offset:-2px}
+.selbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:none;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:999px;padding:8px 8px 8px 20px;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);white-space:nowrap;font-size:15px}
+.sel .selbar{display:flex}
+.selbar b{margin-right:6px}
+.selbar button{border:0;border-radius:999px;padding:8px 16px;font-size:15px;background:rgba(255,255,255,.14);color:#fff}
+.selbar .rm{background:#b4432f;font-weight:700}.selbar .rm:disabled{opacity:.45}
 /* 卡片 */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;align-items:stretch}
 /* 10/11 他：「卡片不用那麼大張，小張最好」「附一張圖片，外觀照或最有特色的側面照」→ 照片橫幅 120 高、備註收成三行 */
@@ -219,7 +233,8 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
     <div class="qah" id="qaH">按 Enter 就加進清單。連結後面可以多打一句（例：想帶岳母去），會存進備註；家裡的 iMac 會自動查店名、地址和照片，一兩分鐘後就會出現。</div>
   </section>
   <section class="stg" id="stg"></section>
-  <div class="cnt" id="cnt"></div>
+  <div class="cntw"><div class="cnt" id="cnt"></div><button type="button" class="selb" id="selB">選取</button></div>
+  <div class="selbar" id="selBar"><b id="selN">已選 0 個</b><button type="button" id="selAll">全選</button><button type="button" class="rm" id="selRm">刪除</button><button type="button" id="selX">取消</button></div>
   <div class="grid" id="grid"></div>
   <div id="out"></div>
 </main>
@@ -391,7 +406,7 @@ function ghBoot(){
 <script>
 var D = {places:[], people:[], kinds:["餐廳", "咖啡甜點", "景點", "住宿", "其他"], today:''};
 var KC = {'餐廳':'var(--k0)', '咖啡甜點':'var(--k1)', '景點':'var(--k2)', '住宿':'var(--k3)', '其他':'var(--k4)'};
-var ST = {who:'', kind:'', city:'', s:'want', q:'', near:null}, KM = {};     // 每次打開＝預設（工作台規則：當場切換不記住）
+var ST = {who:'', kind:'', city:'', s:'want', q:'', near:null}, KM = {}, SEL = null;   // SEL：選取模式時是 {id:true}     // 每次打開＝預設（工作台規則：當場切換不記住）
 (function(){ var m = /who=([^&]+)/.exec(location.hash); if(m) ST.who = decodeURIComponent(m[1]);   // 小工具點人／點最近加的／＋新增 帶進來
   m = /q=([^&]+)/.exec(location.hash); if(m){ ST.q = decodeURIComponent(m[1]); ST.s = 'all'; } })();
 function $(s){ return document.querySelector(s); }
@@ -475,6 +490,22 @@ function pick(st){
 function dist(a, p){ var R = 6371, r = Math.PI / 180, la1 = a.lat * r, la2 = +p.lat * r, dla = la2 - la1, dln = (+p.lng - a.lng) * r;
   var h = Math.sin(dla / 2) * Math.sin(dla / 2) + Math.cos(la1) * Math.cos(la2) * Math.sin(dln / 2) * Math.sin(dln / 2); return 2 * R * Math.asin(Math.sqrt(h)); }
 function kmText(k){ return k < 1 ? '約 '+Math.round(k * 1000 / 50) * 50+' 公尺' : k < 10 ? '約 '+k.toFixed(1)+' 公里' : '約 '+Math.round(k)+' 公里'; }
+function selSync(){
+  document.body.classList.toggle('sel', !!SEL); $('#selB').textContent = SEL ? '完成' : '選取';
+  if(!SEL) return;
+  var n = Object.keys(SEL).length; $('#selN').textContent = '已選 '+n+' 個'; $('#selRm').disabled = !n;
+}
+function selDel(){
+  var ps = D.places.filter(function(p){ return SEL[p.id]; }); if(!ps.length) return;
+  if(!confirm('確定要刪掉這 '+ps.length+' 個嗎？\n\n'+ps.map(function(p){ return '・'+p.name; }).join('\n'))) return;
+  var b = $('#selRm'), done = [], i = 0; b.disabled = true; b.textContent = '刪除中…';
+  (function next(){   // 一個一個刪，手機版每刪一個會丟一筆到 inbox
+    if(i >= ps.length){ fin(); return; }
+    var p = ps[i++]; post({op:'del', id:p.id}).then(function(){ done.push(p); next(); }).catch(fin);
+  })();
+  function fin(){ D.places = D.places.filter(function(x){ return done.indexOf(x) < 0; }); SEL = null; b.textContent = '刪除'; draw();
+    toast(done.length === ps.length ? '刪掉了 '+done.length+' 個' : '只刪掉 '+done.length+' 個，其他的沒刪到，再試一次'); }
+}
 function near(){
   var b = $('#nearB'), s = b.querySelector('span');
   if(ST.near){ ST.near = null; s.textContent = '我附近'; b.classList.remove('on'); draw(); return; }
@@ -494,7 +525,7 @@ function card(p, r, rank){
   var vs = (p.visits||[]).map(function(v, i){ return '<div>'+esc(v.date.slice(5).replace('-', '/'))+(v['with'] && v['with'].length ? '・跟'+esc(v['with'].join('、')) : '')
     +'・'+({'1':'喜歡', '0':'普通', '-1':'不太喜歡'})[String(v.like)]+(v.note ? '・'+esc(v.note) : '')+'<button type="button" data-unv="'+p.id+'" data-i="'+i+'" title="刪掉這筆紀錄">×</button></div>'; }).join('');
   var isLink = /^https?:\/\//.test(p.link||'');
-  return '<article class="cd'+(p.status === 'done' ? ' done' : '')+(p.pending ? ' pend' : '')+(p.id === NEW ? ' new' : '')+'" style="--kc:'+(KC[p.kind]||KC['其他'])+'">'
+  return '<article data-id="'+p.id+'" class="cd'+(SEL && SEL[p.id] ? ' pick' : '')+(p.status === 'done' ? ' done' : '')+(p.pending ? ' pend' : '')+(p.id === NEW ? ' new' : '')+'" style="--kc:'+(KC[p.kind]||KC['其他'])+'">'
     +(p.img ? '<a class="ph" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener" title="開 Google 地圖" style="background-image:url(img/'+p.id+'.jpg?v='+esc(p.img)+')"></a>' : '<div class="ph none"></div>')
     +'<h3>'+(rank ? '<span class="rk">'+rank+'</span>' : '')+esc(p.name)+(p.pending ? (p.auto_err ? '<span class="pb" title="自動查資料沒成功：'+esc(p.auto_err)+'">待整理</span>' : '<span class="pb run" title="正在自動開 Google 地圖查資料">查資料中…</span>') : '')+'</h3>'
     +'<div class="mt">'+(KM[p.id] != null ? '<span class="km">'+kmText(KM[p.id])+'</span>' : '')+'<b>'+esc(p.kind||'未分類')+(p.cat ? '・'+esc(p.cat) : '')+'</b><span>'+esc((p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
@@ -522,6 +553,7 @@ function draw(){
   $('#grid').innerHTML = ok.map(function(x, i){ return card(x.p, x.r, pe && x.r.s > 0 ? i + 1 : 0); }).join('')
     || (D.places.length ? '<div class="empty" style="grid-column:1/-1">這個條件下沒有地點'+(pe && out.length ? '，下面有還沒標「'+esc(pe.name)+'」的可以看看' : '，換一個看看')+'。</div>'
        : '<div class="empty" style="grid-column:1/-1"><b>清單還是空的。</b><br>把 Google 地圖連結貼到最上面的框按 Enter，<br>或直接丟給 Claude 也可以。</div>');
+  selSync();
   $('#out').innerHTML = out.length ? '<details class="out"><summary>還沒標適合'+esc(pe.name)+'的 '+out.length+' 個（卡片上點「'+esc(pe.name)+'」就會移上來）</summary><div class="grid">'
     +out.map(function(x){ return card(x.p, x.r, 0); }).join('')+'</div></details>' : '';
 }
@@ -599,6 +631,12 @@ $('#uDel').addEventListener('click', function(){
 
 // ---- 事件 ----
 document.addEventListener('click', function(e){
+  var sb = e.target.closest('#selB,#selAll,#selRm,#selX');
+  if(sb){ if(sb.id === 'selB' || sb.id === 'selX') SEL = SEL ? null : {};
+    else if(sb.id === 'selAll'){ [].forEach.call(document.querySelectorAll('#grid .cd'), function(c){ SEL[c.getAttribute('data-id')] = true; }); }
+    else { selDel(); return; }
+    draw(); return; }
+  if(SEL){ var cd = e.target.closest('.cd'); if(cd){ e.preventDefault(); var id = cd.getAttribute('data-id'); if(SEL[id]) delete SEL[id]; else SEL[id] = true; cd.classList.toggle('pick', !!SEL[id]); selSync(); return; } }
   var nt = e.target.closest('[data-more]'); if(nt){ nt.classList.toggle('cl'); return; }
   var t = e.target.closest('button,a'); if(!t) return;
   var a = function(n){ return t.getAttribute(n); };
