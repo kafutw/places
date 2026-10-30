@@ -22,6 +22,11 @@ button{cursor:pointer}
 button.stat:hover{background:rgba(31,78,87,.55)}
 button.stat.on{background:#fff;color:var(--deep)}
 .stat b{font-weight:700}
+/* 10/30 他：「旅行時怎麼確認目前位置附近有哪些之前想去的點」→ 頁首「我附近」：手機定位一次，卡片照直線距離排、標幾公里；位置只在本機算，不存不傳 */
+.stat.near{display:inline-flex;align-items:center;gap:4px;background:var(--warm);font-weight:700}
+button.stat.near:hover{background:#bb774b}
+.stat.near .ic{width:15px;height:15px;stroke-width:2.4}
+.cd .mt .km{font-weight:700;color:var(--warm)}
 .sp{flex:1}
 .hb{display:inline-flex;align-items:center;gap:6px;border:0;text-decoration:none;color:#fff;background:rgba(255,255,255,.18);border-radius:999px;padding:6px 16px;font-size:14px;white-space:nowrap}
 .hb:hover{background:rgba(255,255,255,.32)}
@@ -185,7 +190,7 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
 </defs></svg>
 <header class="hd"><div class="in">
   <div class="brand"><b>外出待去清單</b><small>Places to go</small></div>
-  <button type="button" class="stat" data-s="want" title="看想去的">想去 <b id="nW">0</b></button><button type="button" class="stat" data-s="done" title="看去過的">去過 <b id="nD">0</b></button>
+  <button type="button" class="stat" data-s="want" title="看想去的">想去 <b id="nW">0</b></button><button type="button" class="stat" data-s="done" title="看去過的">去過 <b id="nD">0</b></button><button type="button" class="stat near" id="nearB" title="用手機定位，照離你的距離排"><svg class="ic" aria-hidden="true"><use href="#i-map-pin"/></svg><span>我附近</span></button>
   <span class="sp"></span>
   <button type="button" class="hb" id="ghR" title="重新讀一次清單">更新</button>
 </div></header>
@@ -372,7 +377,7 @@ function ghBoot(){
 <script>
 var D = {places:[], people:[], kinds:["餐廳", "咖啡甜點", "景點", "住宿", "其他"], today:''};
 var KC = {'餐廳':'var(--k0)', '咖啡甜點':'var(--k1)', '景點':'var(--k2)', '住宿':'var(--k3)', '其他':'var(--k4)'};
-var ST = {who:'', kind:'', city:'', s:'want', q:''};     // 每次打開＝預設（工作台規則：當場切換不記住）
+var ST = {who:'', kind:'', city:'', s:'want', q:'', near:null}, KM = {};     // 每次打開＝預設（工作台規則：當場切換不記住）
 (function(){ var m = /who=([^&]+)/.exec(location.hash); if(m) ST.who = decodeURIComponent(m[1]);   // 小工具點人／點最近加的／＋新增 帶進來
   m = /q=([^&]+)/.exec(location.hash); if(m){ ST.q = decodeURIComponent(m[1]); ST.s = 'all'; } })();
 function $(s){ return document.querySelector(s); }
@@ -445,7 +450,30 @@ function pick(st){
   var ok = [], out = [];
   rows.forEach(function(p){ var r = pe ? score(p, pe, lw) : null; (!r || r.s > 0 ? ok : out).push({p:p, r:r}); });
   ok.sort(function(a, b){ return (b.r ? b.r.s : 0) - (a.r ? a.r.s : 0) || String(b.p.added).localeCompare(String(a.p.added)) || D.places.indexOf(b.p) - D.places.indexOf(a.p); });
+  KM = {};
+  if(st.near){   // 我附近：照直線距離排，沒座標的放最後
+    var byKm = function(a, b){ var x = KM[a.p.id], y = KM[b.p.id]; return (x == null ? 1e9 : x) - (y == null ? 1e9 : y); };
+    rows.forEach(function(p){ if(p.lat && p.lng) KM[p.id] = dist(st.near, p); });
+    ok.sort(byKm); out.sort(byKm);
+  }
   return {ok:ok, out:out, pe:pe};
+}
+function dist(a, p){ var R = 6371, r = Math.PI / 180, la1 = a.lat * r, la2 = +p.lat * r, dla = la2 - la1, dln = (+p.lng - a.lng) * r;
+  var h = Math.sin(dla / 2) * Math.sin(dla / 2) + Math.cos(la1) * Math.cos(la2) * Math.sin(dln / 2) * Math.sin(dln / 2); return 2 * R * Math.asin(Math.sqrt(h)); }
+function kmText(k){ return k < 1 ? '約 '+Math.round(k * 1000 / 50) * 50+' 公尺' : k < 10 ? '約 '+k.toFixed(1)+' 公里' : '約 '+Math.round(k)+' 公里'; }
+function near(){
+  var b = $('#nearB'), s = b.querySelector('span');
+  if(ST.near){ ST.near = null; s.textContent = '我附近'; b.classList.remove('on'); draw(); return; }
+  if(!navigator.geolocation){ toast('這個瀏覽器拿不到位置'); return; }
+  s.textContent = '定位中…';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    ST.near = {lat:pos.coords.latitude, lng:pos.coords.longitude}; ST.city = ''; s.textContent = '我附近 ✓'; b.classList.add('on'); draw();
+    toast('照離你的距離排好了，再按一次就取消');
+    var c = $('#cnt'); window.scrollTo({top:c.getBoundingClientRect().top + window.scrollY - $('.hd').offsetHeight - 8, behavior:'smooth'});   // 手機上卡片在很下面，直接捲過去
+  }, function(e){
+    s.textContent = '我附近';
+    toast(e.code === 1 ? '沒有拿到位置權限，到手機設定把這個瀏覽器的定位打開再試一次' : '這次定位沒成功，換個地方或等一下再按一次');
+  }, {enableHighAccuracy:false, timeout:15000, maximumAge:300000});
 }
 function mapUrl(p){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.name+' '+(p.addr || ((p.city||'')+(p.area||'')))); }
 function card(p, r, rank){
@@ -455,7 +483,7 @@ function card(p, r, rank){
   return '<article class="cd'+(p.status === 'done' ? ' done' : '')+(p.pending ? ' pend' : '')+(p.id === NEW ? ' new' : '')+'" style="--kc:'+(KC[p.kind]||KC['其他'])+'">'
     +(p.img ? '<a class="ph" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener" title="開 Google 地圖" style="background-image:url(img/'+p.id+'.jpg?v='+esc(p.img)+')"></a>' : '<div class="ph none"></div>')
     +'<h3>'+(rank ? '<span class="rk">'+rank+'</span>' : '')+esc(p.name)+(p.pending ? (p.auto_err ? '<span class="pb" title="自動查資料沒成功：'+esc(p.auto_err)+'">待整理</span>' : '<span class="pb run" title="正在自動開 Google 地圖查資料">查資料中…</span>') : '')+'</h3>'
-    +'<div class="mt"><b>'+esc(p.kind||'未分類')+(p.cat ? '・'+esc(p.cat) : '')+'</b><span>'+esc((p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
+    +'<div class="mt">'+(KM[p.id] != null ? '<span class="km">'+kmText(KM[p.id])+'</span>' : '')+'<b>'+esc(p.kind||'未分類')+(p.cat ? '・'+esc(p.cat) : '')+'</b><span>'+esc((p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
     +(p.price ? '<span>'+esc(p.price)+'</span>' : '')+(p.status === 'drop' ? '<span>先不去</span>' : '')+'</div>'
     +((p.tags||[]).length ? '<div class="tags">'+(p.tags||[]).map(function(t){ return '<span class="tag">'+esc(t)+'</span>'; }).join('')+'</div>' : '')
 
@@ -476,7 +504,7 @@ function draw(){
   [].forEach.call(document.querySelectorAll('.hd .stat'), function(b){ b.classList.toggle('on', b.getAttribute('data-s') === ST.s); });
   drawStage();
   var r = pick(ST), ok = r.ok, out = r.out, pe = r.pe;
-  $('#cnt').textContent = D.places.length ? (ST.s === 'done' ? '去過的 ' : ST.s === 'all' ? '全部 ' : '')+ok.length+' 個'+(pe && ok.length ? '，照'+pe.name+'的喜好排' : '') : '';
+  $('#cnt').textContent = D.places.length ? (ST.s === 'done' ? '去過的 ' : ST.s === 'all' ? '全部 ' : '')+ok.length+' 個'+(ST.near ? '，照離你的直線距離排' : pe && ok.length ? '，照'+pe.name+'的喜好排' : '') : '';
   $('#grid').innerHTML = ok.map(function(x, i){ return card(x.p, x.r, pe && x.r.s > 0 ? i + 1 : 0); }).join('')
     || (D.places.length ? '<div class="empty" style="grid-column:1/-1">這個條件下沒有地點'+(pe && out.length ? '，下面有還沒標「'+esc(pe.name)+'」的可以看看' : '，換一個看看')+'。</div>'
        : '<div class="empty" style="grid-column:1/-1"><b>清單還是空的。</b><br>把 Google 地圖連結貼到最上面的框按 Enter，<br>或直接丟給 Claude 也可以。</div>');
@@ -560,6 +588,7 @@ document.addEventListener('click', function(e){
   var nt = e.target.closest('[data-more]'); if(nt){ nt.classList.toggle('cl'); return; }
   var t = e.target.closest('button,a'); if(!t) return;
   var a = function(n){ return t.getAttribute(n); };
+  if(t.id === 'nearB'){ near(); return; }
   if(a('data-qz') != null){ ST[QK[QZ.step]] = a('data-qz'); QZ.step++; draw(); }
   else if(t.hasAttribute('data-qb')){ QZ.step--; ST[QK[QZ.step]] = ''; draw(); }
   else if(t.hasAttribute('data-qr')){ QZ.step = 0; ST.who = ''; ST.city = ''; ST.kind = ''; draw(); }
