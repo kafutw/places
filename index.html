@@ -218,12 +218,11 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
 /* 11/2 他：「地圖可以是正方形的嗎？長一點，目前這樣太扁了」→ 寬高一樣，電腦上最多一個螢幕高（不然要捲兩次才看得完） */
 #map{aspect-ratio:1/1;width:min(100%, calc(100vh - 150px));min-width:min(100%, 420px);margin:0 auto;background:#eef3f0}
 .mapw{background:#e3efe9}
-/* 11/2 他：「找不到地標地點在哪裡，改得比較顯眼一點」→ 圖釘放大、一律亮紅橘（景點的綠色會跟山的綠混在一起）、底圖調淡 */
+/* 11/2 他：「找不到地標地點在哪裡，改得比較顯眼一點」→ 圖釘放大、一律亮紅橘（景點的綠色會跟山的綠混在一起）；底圖不調淡（他：「我不要把它變暗淡，就只是圖標變清楚就好」） */
 .mk{width:40px;height:40px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#e4502b;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.55),0 0 0 2px rgba(120,30,10,.35);display:grid;place-items:center}
 .mk b{transform:rotate(45deg);color:#fff;font:800 17px/1 system-ui,sans-serif}
 .leaflet-tooltip.mkt{background:#fff;border:2px solid #e4502b;border-radius:10px;padding:3px 10px;font-size:15px;font-weight:800;color:#192a3d;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 @media (max-width:640px){.mk b{font-size:14px}.leaflet-tooltip.mkt{font-size:12.5px;padding:2px 7px;border-width:1.5px}}
-.osm{filter:saturate(.35) brightness(1.04) contrast(.92)}
 .leaflet-tooltip.mkt::before{display:none}
 .mpp b{display:block;font-size:15px;color:#192a3d;margin-bottom:2px}.mpp span{display:block;font-size:13px;color:#6b7a86;margin-bottom:8px}
 .mpp a,.mpp button{display:inline-block;border:1px solid #c5ddd2;background:#fff;border-radius:999px;padding:3px 12px;font-size:13px;color:#2c5a4d;margin-right:6px;text-decoration:none;cursor:pointer}
@@ -702,7 +701,7 @@ function drawMap(ok){
     LYR.sat = L.layerGroup([L.tileLayer(es+'World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Esri, Maxar'}),
       L.tileLayer(es+'Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, opacity:.7}),
       L.tileLayer(es+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {maxZoom:19})]);
-    LYR.map = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap', className:'osm'});
+    LYR.map = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'});
     LYR[LYR.on].addTo(MAP);
     MLY = L.layerGroup().addTo(MAP);
     if(window.ResizeObserver){ var sz = 0; new ResizeObserver(function(){ var w = $('#map').offsetWidth; if(!w || w === sz) return; sz = w; MAP.invalidateSize(); if(MAP.fit) MAP.fit(); }).observe($('#map')); }   // 正方形跟著視窗寬度變，變了就重新框住全部
