@@ -96,14 +96,14 @@ button.stat.near:hover{background:#bb774b}
 .flt input[type=search]{flex:1;min-width:180px}
 .cnt{font-size:13.5px;color:var(--mute)}
 /* 11/2 他：「這邊應該可以列出縣市…我們在外縣市，就熊熊找不到我們想去的點」→ 舞台下面常駐一排縣市鈕，北到南排，點一下只看那個縣市、再點取消 */
-.cty{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 2px 14px}
-.cty>b{font-size:14px;color:var(--teal-d);margin-right:2px;white-space:nowrap;flex:none}
-.cty button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:15px;color:var(--ink);white-space:nowrap}
-.cty button small{font-size:12.5px;color:var(--mute);margin-left:5px}
-.cty button:hover{border-color:var(--warm)}
-.cty button.on{background:var(--warm);border-color:var(--warm);color:#fff;font-weight:700}
-.cty button.on small{color:rgba(255,255,255,.85)}
-@media (max-width:640px){.cty{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px 12px;padding:0 16px 4px;scrollbar-width:none}.cty::-webkit-scrollbar{display:none}.cty button{font-size:14.5px;padding:6px 12px}}
+.cty{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 16px;background:#e3efe9;border:1.5px solid #c5ddd2;border-radius:20px;padding:14px 18px}
+.cty>b{font-family:var(--serif);font-size:18px;color:#2c5a4d;margin-right:4px;white-space:nowrap;flex:none;letter-spacing:1px}
+.cty button{border:2px solid #3e8a74;background:#fff;border-radius:999px;padding:8px 18px;font-size:17px;font-weight:700;color:#2c5a4d;white-space:nowrap;flex:none}
+.cty button small{font-size:13px;font-weight:400;color:var(--mute);margin-left:6px}
+.cty button:hover{background:#f2c19e;border-color:#f2c19e}
+.cty button.on{background:var(--warm);border-color:var(--warm);color:#fff}
+.cty button.on small{color:rgba(255,255,255,.9)}
+@media (max-width:640px){.cty{flex-wrap:nowrap;overflow-x:auto;padding:12px 14px;scrollbar-width:none}.cty::-webkit-scrollbar{display:none}.cty>b{font-size:16px}.cty button{font-size:16px;padding:7px 15px}}
 /* 10/30 他：「有沒有可以批次刪除的選項？夜市那四個一次點選然後刪掉」→ 數量旁邊「選取」：點卡片打勾、底下一條列「刪除」 */
 .cntw{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 2px 10px}
 .selb{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 14px;font-size:13.5px;color:var(--teal-d)}
@@ -452,7 +452,7 @@ var QZ = {step:0}, QK = ['who', 'city', 'kind'];
 var ACT = [{v:'餐廳', t:'吃東西', i:'food'}, {v:'咖啡甜點', t:'喝咖啡', i:'cup'}, {v:'景點', t:'出去走走', i:'tree'}, {v:'住宿', t:'住一晚', i:'bed'}];
 function qlabel(k, v){ if(k === 'who') return v ? '跟'+v : '自己想去'; if(k === 'city') return v === '-' ? '沒填縣市' : v || '哪裡都可以'; return v ? ACT.filter(function(a){ return a.v === v; })[0].t : '都可以'; }
 function drawStage(){
-  var cs = {}; D.places.forEach(function(p){ if(p.city && (p.status||'want') === (ST.s === 'done' ? 'done' : 'want')) cs[p.city] = (cs[p.city]||0) + 1; });
+  var cs = {}; D.places.forEach(function(p){ if(p.city && (p.status||'want') === (ST.s === 'done' ? 'done' : 'want')) cs[ck(p.city)] = (cs[ck(p.city)]||0) + 1; });
   var Q = [
     {q:'這次跟誰去？', o:[{v:'', t:'自己想去', i:'users'}].concat(D.people.map(function(p){ return {v:p.name, t:p.name, i:/孩|小孩|兒|女/.test(p.name) ? 'baby' : 'heart'}; }))},
     {q:'想在哪裡？', o:[{v:'', t:'哪裡都可以', i:'globe'}].concat(Object.keys(cs).sort(function(a, b){ return cs[b] - cs[a]; }).map(function(c){ return {v:c, t:c, i:'map-pin'}; }))},
@@ -473,13 +473,17 @@ function drawStage(){
   $('#stg').innerHTML = h;
   var ct = {}; D.places.forEach(function(p){ if(p.cat) ct[p.cat] = 1; });
   $('#dlCat').innerHTML = Object.keys(ct).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
-  $('#dlCity').innerHTML = Object.keys(cs).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
+  var fc = {}; D.places.forEach(function(p){ if(p.city) fc[p.city] = 1; });
+  $('#dlCity').innerHTML = Object.keys(fc).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
 }
 // 縣市鈕：北到南、東部、離島；數字是「其他條件不變、換成這個縣市」會剩幾個
-var CTY = ['基隆市','台北市','臺北市','新北市','桃園市','新竹市','新竹縣','苗栗縣','台中市','臺中市','彰化縣','南投縣','雲林縣','嘉義市','嘉義縣','台南市','臺南市','高雄市','屏東縣','宜蘭縣','花蓮縣','台東縣','臺東縣','澎湖縣','金門縣','連江縣'];
+// 11/2 他：「新竹縣和新竹市分為同一種就好…雲林縣、斗六市都分為同一種，一個縣市大項就一個」→ 縣市一律收成大項（去掉縣／市、臺→台、縣轄市歸回所屬縣）
+var CTY = ['基隆','台北','新北','桃園','新竹','苗栗','台中','彰化','南投','雲林','嘉義','台南','高雄','屏東','宜蘭','花蓮','台東','澎湖','金門','連江'];
+var TOWN = {'竹北':'新竹','頭份':'苗栗','員林':'彰化','斗六':'雲林','太保':'嘉義','朴子':'嘉義','馬公':'澎湖','金城':'金門'};
+function ck(c){ c = String(c||'').trim().replace(/臺/g, '台').replace(/[縣市]$/, ''); return TOWN[c] || c; }
 function drawCty(){
   var cs = {}, t = {}; for(var x in ST) t[x] = ST[x]; t.city = '';
-  var r = pick(t); r.ok.concat(r.out).forEach(function(x){ var c = x.p.city || '沒填縣市'; cs[c] = (cs[c]||0) + 1; });
+  var r = pick(t); r.ok.concat(r.out).forEach(function(x){ var c = ck(x.p.city) || '沒填縣市'; cs[c] = (cs[c]||0) + 1; });
   var cur = ST.city === '-' ? '沒填縣市' : ST.city; if(cur && !cs[cur]) cs[cur] = 0;
   var ks = Object.keys(cs).sort(function(a, b){ var x = CTY.indexOf(a), y = CTY.indexOf(b); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
   var all = ks.reduce(function(s, c){ return s + cs[c]; }, 0);
@@ -494,7 +498,7 @@ function pick(st){
     if(st.s === 'want' && s !== 'want') return false;
     if(st.s === 'done' && s !== 'done') return false;
     if(st.kind && p.kind !== st.kind) return false;
-    if(st.city && (st.city === '-' ? !!p.city : p.city !== st.city)) return false;
+    if(st.city && (st.city === '-' ? !!p.city : ck(p.city) !== st.city)) return false;
     if(q && [p.name, p.cat, p.city, p.area, p.note, p.addr].concat(p.tags||[], p.who||[]).join(' ').toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
     return true; });
   var ok = [], out = [];
@@ -590,7 +594,7 @@ function openP(p){
   EDIT = p || null; var f = $('#fP');
   f.kind.innerHTML = D.kinds.map(function(k){ return '<option>'+k+'</option>'; }).join('');
   ['name','kind','cat','city','area','link','addr','hours','price','note','status'].forEach(function(k){ f[k].value = p ? (p[k]||'') : ''; });
-  if(!p){ f.kind.value = ST.kind || '餐廳'; f.status.value = 'want'; f.city.value = ST.city || ''; }
+  if(!p){ f.kind.value = ST.kind || '餐廳'; f.status.value = 'want'; f.city.value = (D.places.filter(function(x){ return ST.city && ST.city !== '-' && ck(x.city) === ST.city; })[0] || {}).city || ''; }
   f.tags.value = p ? (p.tags||[]).join('、') : '';
   chk('#whoChk', p ? (p.who||[]) : (ST.who ? [ST.who] : []));
   $('#dPt').textContent = p ? '修改：'+p.name : '新增地點';
