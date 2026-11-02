@@ -95,6 +95,15 @@ button.stat.near:hover{background:#bb774b}
 .flt select,.flt input[type=search]{border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#fff;font-size:14px}
 .flt input[type=search]{flex:1;min-width:180px}
 .cnt{font-size:13.5px;color:var(--mute)}
+/* 11/2 他：「這邊應該可以列出縣市…我們在外縣市，就熊熊找不到我們想去的點」→ 舞台下面常駐一排縣市鈕，北到南排，點一下只看那個縣市、再點取消 */
+.cty{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 2px 14px}
+.cty>b{font-size:14px;color:var(--teal-d);margin-right:2px;white-space:nowrap;flex:none}
+.cty button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:15px;color:var(--ink);white-space:nowrap}
+.cty button small{font-size:12.5px;color:var(--mute);margin-left:5px}
+.cty button:hover{border-color:var(--warm)}
+.cty button.on{background:var(--warm);border-color:var(--warm);color:#fff;font-weight:700}
+.cty button.on small{color:rgba(255,255,255,.85)}
+@media (max-width:640px){.cty{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px 12px;padding:0 16px 4px;scrollbar-width:none}.cty::-webkit-scrollbar{display:none}.cty button{font-size:14.5px;padding:6px 12px}}
 /* 10/30 他：「有沒有可以批次刪除的選項？夜市那四個一次點選然後刪掉」→ 數量旁邊「選取」：點卡片打勾、底下一條列「刪除」 */
 .cntw{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 2px 10px}
 .selb{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 14px;font-size:13.5px;color:var(--teal-d)}
@@ -233,6 +242,7 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
     <div class="qah" id="qaH">按 Enter 就加進清單。連結後面可以多打一句（例：想帶岳母去），會存進備註；家裡的 iMac 會自動查店名、地址和照片，一兩分鐘後就會出現。</div>
   </section>
   <section class="stg" id="stg"></section>
+  <nav class="cty" id="cty" aria-label="依縣市看"></nav>
   <div class="cntw"><div class="cnt" id="cnt"></div><button type="button" class="selb" id="selB">選取</button></div>
   <div class="selbar" id="selBar"><b id="selN">已選 0 個</b><button type="button" id="selAll">全選</button><button type="button" class="rm" id="selRm">刪除</button><button type="button" id="selX">取消</button></div>
   <div class="grid" id="grid"></div>
@@ -440,7 +450,7 @@ function score(p, pe, lw){
 // ---- 畫面 ----
 var QZ = {step:0}, QK = ['who', 'city', 'kind'];
 var ACT = [{v:'餐廳', t:'吃東西', i:'food'}, {v:'咖啡甜點', t:'喝咖啡', i:'cup'}, {v:'景點', t:'出去走走', i:'tree'}, {v:'住宿', t:'住一晚', i:'bed'}];
-function qlabel(k, v){ if(k === 'who') return v ? '跟'+v : '自己想去'; if(k === 'city') return v || '哪裡都可以'; return v ? ACT.filter(function(a){ return a.v === v; })[0].t : '都可以'; }
+function qlabel(k, v){ if(k === 'who') return v ? '跟'+v : '自己想去'; if(k === 'city') return v === '-' ? '沒填縣市' : v || '哪裡都可以'; return v ? ACT.filter(function(a){ return a.v === v; })[0].t : '都可以'; }
 function drawStage(){
   var cs = {}; D.places.forEach(function(p){ if(p.city && (p.status||'want') === (ST.s === 'done' ? 'done' : 'want')) cs[p.city] = (cs[p.city]||0) + 1; });
   var Q = [
@@ -465,6 +475,17 @@ function drawStage(){
   $('#dlCat').innerHTML = Object.keys(ct).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
   $('#dlCity').innerHTML = Object.keys(cs).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
 }
+// 縣市鈕：北到南、東部、離島；數字是「其他條件不變、換成這個縣市」會剩幾個
+var CTY = ['基隆市','台北市','臺北市','新北市','桃園市','新竹市','新竹縣','苗栗縣','台中市','臺中市','彰化縣','南投縣','雲林縣','嘉義市','嘉義縣','台南市','臺南市','高雄市','屏東縣','宜蘭縣','花蓮縣','台東縣','臺東縣','澎湖縣','金門縣','連江縣'];
+function drawCty(){
+  var cs = {}, t = {}; for(var x in ST) t[x] = ST[x]; t.city = '';
+  var r = pick(t); r.ok.concat(r.out).forEach(function(x){ var c = x.p.city || '沒填縣市'; cs[c] = (cs[c]||0) + 1; });
+  var cur = ST.city === '-' ? '沒填縣市' : ST.city; if(cur && !cs[cur]) cs[cur] = 0;
+  var ks = Object.keys(cs).sort(function(a, b){ var x = CTY.indexOf(a), y = CTY.indexOf(b); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
+  var all = ks.reduce(function(s, c){ return s + cs[c]; }, 0);
+  $('#cty').innerHTML = ks.length ? '<b>縣市</b><button type="button" data-cty=""'+(ST.city ? '' : ' class="on"')+'>全部<small>'+all+'</small></button>'
+    + ks.map(function(c){ return '<button type="button" data-cty="'+esc(c === '沒填縣市' ? '-' : c)+'"'+(cur === c ? ' class="on"' : '')+'>'+esc(c)+'<small>'+cs[c]+'</small></button>'; }).join('') : '';
+}
 // 依目前選的條件挑地點：有選人時，標過他或對上他喜好的放前面（ok），其他收進「還沒標」
 function pick(st){
   var q = (st.q||'').trim(), pe = person(st.who), lw = pe ? learned(pe.name) : {};
@@ -473,7 +494,7 @@ function pick(st){
     if(st.s === 'want' && s !== 'want') return false;
     if(st.s === 'done' && s !== 'done') return false;
     if(st.kind && p.kind !== st.kind) return false;
-    if(st.city && p.city !== st.city) return false;
+    if(st.city && (st.city === '-' ? !!p.city : p.city !== st.city)) return false;
     if(q && [p.name, p.cat, p.city, p.area, p.note, p.addr].concat(p.tags||[], p.who||[]).join(' ').toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
     return true; });
   var ok = [], out = [];
@@ -547,7 +568,7 @@ function draw(){
   $('#nW').textContent = D.places.filter(function(p){ return (p.status||'want') === 'want'; }).length;
   $('#nD').textContent = D.places.filter(function(p){ return p.status === 'done'; }).length;
   [].forEach.call(document.querySelectorAll('.hd .stat'), function(b){ b.classList.toggle('on', b.getAttribute('data-s') === ST.s); });
-  drawStage();
+  drawStage(); drawCty();
   var r = pick(ST), ok = r.ok, out = r.out, pe = r.pe;
   $('#cnt').textContent = D.places.length ? (ST.s === 'done' ? '去過的 ' : ST.s === 'all' ? '全部 ' : '')+ok.length+' 個'+(ST.near ? '，照離你的直線距離排' : pe && ok.length ? '，照'+pe.name+'的喜好排' : '') : '';
   $('#grid').innerHTML = ok.map(function(x, i){ return card(x.p, x.r, pe && x.r.s > 0 ? i + 1 : 0); }).join('')
@@ -641,6 +662,7 @@ document.addEventListener('click', function(e){
   var t = e.target.closest('button,a'); if(!t) return;
   var a = function(n){ return t.getAttribute(n); };
   if(t.id === 'nearB'){ near(); return; }
+  if(a('data-cty') != null){ var c = a('data-cty'); ST.city = ST.city === c ? '' : c; if(QZ.step === 1) QZ.step = 2; draw(); return; }
   if(a('data-qz') != null){ ST[QK[QZ.step]] = a('data-qz'); QZ.step++; draw(); }
   else if(t.hasAttribute('data-qb')){ QZ.step--; ST[QK[QZ.step]] = ''; draw(); }
   else if(t.hasAttribute('data-qr')){ QZ.step = 0; ST.who = ''; ST.city = ''; ST.kind = ''; draw(); }
