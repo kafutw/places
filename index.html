@@ -211,7 +211,13 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
 .maph{display:flex;align-items:baseline;gap:12px;padding:14px 20px;background:#e3efe9}
 .maph b{font-family:var(--serif);font-size:20px;color:#2c5a4d;letter-spacing:1px}
 .maph span{font-size:14px;color:var(--mute)}
-#map{height:460px;background:#eef3f0}
+.maph .lyr{margin-left:auto;display:inline-flex;background:#fff;border:1.5px solid #c5ddd2;border-radius:999px;padding:3px;flex:none}
+.maph .lyr button{border:0;background:transparent;border-radius:999px;padding:5px 16px;font-size:15px;font-weight:700;color:#2c5a4d}
+.maph .lyr button.on{background:#3e8a74;color:#fff}
+@media (max-width:640px){.maph{flex-wrap:wrap}.maph .lyr button{padding:4px 13px;font-size:14px}}
+/* 11/2 他：「地圖可以是正方形的嗎？長一點，目前這樣太扁了」→ 寬高一樣，電腦上最多一個螢幕高（不然要捲兩次才看得完） */
+#map{aspect-ratio:1/1;width:min(100%, calc(100vh - 150px));min-width:min(100%, 420px);margin:0 auto;background:#eef3f0}
+.mapw{background:#e3efe9}
 .mk{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--kc,#3e8a74);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:grid;place-items:center}
 .mk b{transform:rotate(45deg);color:#fff;font:700 13px/1 system-ui,sans-serif}
 .leaflet-tooltip.mkt{background:rgba(255,255,255,.92);border:0;border-radius:8px;padding:2px 7px;font-size:12.5px;font-weight:700;color:#2c5a4d;box-shadow:0 1px 4px rgba(0,0,0,.25)}
@@ -220,7 +226,7 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
 .mpp a,.mpp button{display:inline-block;border:1px solid #c5ddd2;background:#fff;border-radius:999px;padding:3px 12px;font-size:13px;color:#2c5a4d;margin-right:6px;text-decoration:none;cursor:pointer}
 .cd .no{position:absolute;left:10px;top:10px;z-index:2;min-width:28px;height:28px;padding:0 6px;border-radius:999px;background:var(--kc);color:#fff;font:700 14px/28px system-ui,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:none}
 .cd.flash{outline:3px solid var(--warm);outline-offset:3px}
-@media (max-width:640px){#map{height:360px}.maph{padding:12px 16px}.cd .no{left:6px;top:6px;min-width:24px;height:24px;line-height:24px;font-size:12.5px}}
+@media (max-width:640px){#map{width:100%}.maph{padding:12px 16px}.cd .no{left:6px;top:6px;min-width:24px;height:24px;line-height:24px;font-size:12.5px}}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
@@ -262,7 +268,7 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
   <div class="selbar" id="selBar"><b id="selN">已選 0 個</b><button type="button" id="selAll">全選</button><button type="button" class="rm" id="selRm">刪除</button><button type="button" id="selX">取消</button></div>
   <div class="grid" id="grid"></div>
   <div id="out"></div>
-  <section class="mapw" id="mapw" hidden><div class="maph"><b>地圖</b><span id="mapN"></span></div><div id="map"></div></section>
+  <section class="mapw" id="mapw" hidden><div class="maph"><b>地圖</b><span id="mapN"></span><span class="lyr"><button type="button" data-lyr="sat" class="on">衛星</button><button type="button" data-lyr="map">地圖</button></span></div><div id="map"></div></section>
 </main>
 
 <dialog id="dP"><form method="dialog" id="fP">
@@ -672,7 +678,7 @@ $('#uDel').addEventListener('click', function(){
 });
 
 // ---- 地圖：卡片下面那張，號碼跟卡片左上角一樣 ----
-var MAP = null, MLY = null, MKEY = '', MPTS = [];
+var MAP = null, MLY = null, MKEY = '', MPTS = [], LYR = {on:'sat'};
 function drawMap(ok){
   var pts = ok.filter(function(x){ return x.p.lat && x.p.lng; }).map(function(x, i){ return x.p; });
   MPTS = pts; $('#mapw').hidden = $('#mapB').hidden = !pts.length;
@@ -686,7 +692,13 @@ function drawMap(ok){
     return; }
   if(!MAP){
     MAP = L.map('map', {scrollWheelZoom:false, dragging:!L.Browser.mobile, tap:false});   // 不吃滑鼠滾輪、手機單指不拖地圖，免得捲頁面卡在地圖上
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(MAP);
+    // 11/2 他問「不能用衛星的嗎」→ 預設衛星（Esri 空照＋道路、地名疊圖），右上切回一般地圖（OpenStreetMap，中文路名）
+    var es = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+    LYR.sat = L.layerGroup([L.tileLayer(es+'World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Esri, Maxar'}),
+      L.tileLayer(es+'Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, opacity:.7}),
+      L.tileLayer(es+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {maxZoom:19})]);
+    LYR.map = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'});
+    LYR[LYR.on].addTo(MAP);
     MLY = L.layerGroup().addTo(MAP);
   }
   var key = pts.map(function(p){ return p.id+p.lat+p.lng+p.name+p.kind; }).join('|');
@@ -717,6 +729,8 @@ document.addEventListener('click', function(e){
   var t = e.target.closest('button,a'); if(!t) return;
   var a = function(n){ return t.getAttribute(n); };
   if(t.id === 'nearB'){ near(); return; }
+  if(a('data-lyr')){ var lv = a('data-lyr'); if(MAP && LYR.on !== lv){ MAP.removeLayer(LYR[LYR.on]); LYR[lv].addTo(MAP); LYR[lv].bringToBack && LYR[lv].bringToBack(); }
+    LYR.on = lv; [].forEach.call(document.querySelectorAll('[data-lyr]'), function(b){ b.classList.toggle('on', b.getAttribute('data-lyr') === lv); }); return; }
   if(t.id === 'mapB'){ $('#mapw').scrollIntoView({behavior:'smooth', block:'center'}); return; }
   if(a('data-goc')){ var gc = document.querySelector('#grid .cd[data-id="'+a('data-goc')+'"]'); if(gc){ gc.scrollIntoView({behavior:'smooth', block:'center'}); gc.classList.add('flash'); setTimeout(function(){ gc.classList.remove('flash'); }, 1800); } return; }
   if(a('data-cty') != null){ var c = a('data-cty'); ST.city = ST.city === c ? '' : c; if(QZ.step === 1) QZ.step = 2; draw(); return; }
