@@ -687,8 +687,10 @@ function drawMap(ok){
   var miss = ok.length - pts.length;
   $('#mapN').textContent = pts.length+' 個地點'+(miss ? '，另外 '+miss+' 個還沒有座標所以沒標' : '')+'・點圖釘看名字';
   if(!window.L){ if(!drawMap.ld){ drawMap.ld = 1;
-      var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(c);
-      var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = function(){ drawMap.ld = 2; draw(); }; document.head.appendChild(s); }
+      var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+      c.onload = function(){   // 樣式表先到才載程式：程式先跑的話地圖會算錯大小，只畫一半
+        var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = function(){ drawMap.ld = 2; draw(); }; document.head.appendChild(s); };
+      document.head.appendChild(c); }
     return; }
   if(!MAP){
     MAP = L.map('map', {scrollWheelZoom:false, dragging:!L.Browser.mobile, tap:false});   // 不吃滑鼠滾輪、手機單指不拖地圖，免得捲頁面卡在地圖上
@@ -700,6 +702,7 @@ function drawMap(ok){
     LYR.map = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'});
     LYR[LYR.on].addTo(MAP);
     MLY = L.layerGroup().addTo(MAP);
+    if(window.ResizeObserver){ var sz = 0; new ResizeObserver(function(){ var w = $('#map').offsetWidth; if(!w || w === sz) return; sz = w; MAP.invalidateSize(); if(MAP.fit) MAP.fit(); }).observe($('#map')); }   // 正方形跟著視窗寬度變，變了就重新框住全部
   }
   var key = pts.map(function(p){ return p.id+p.lat+p.lng+p.name+p.kind; }).join('|');
   MAP.invalidateSize();
@@ -713,8 +716,9 @@ function drawMap(ok){
     if(lab) m.bindTooltip(esc(p.name.length > 10 ? p.name.slice(0, 10)+'…' : p.name), {permanent:true, direction:'right', className:'mkt'});
     MLY.addLayer(m);
   });
-  if(pts.length === 1) MAP.setView([+pts[0].lat, +pts[0].lng], 14);
-  else MAP.fitBounds(pts.map(function(p){ return [+p.lat, +p.lng]; }), {padding:[40, 40], maxZoom:15});
+  MAP.fit = function(){ if(pts.length === 1) MAP.setView([+pts[0].lat, +pts[0].lng], 14, {animate:false});
+    else MAP.fitBounds(pts.map(function(p){ return [+p.lat, +p.lng]; }), {padding:[40, 40], maxZoom:15, animate:false}); };
+  MAP.fit();
 }
 
 // ---- 事件 ----
