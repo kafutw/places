@@ -206,6 +206,21 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
   .act{margin:0 -10px -8px -13px;padding:6px 8px 8px 11px;gap:4px;justify-content:space-between}
   .act a,.act button{font-size:0;padding:5px 7px;gap:0}.act .ic,.act .ed .ic{width:16px;height:16px}.act .ed{margin-left:0}
 }
+/* 11/2 他：「列表下面可不可以有一個地圖，標示這幾個地點的相對位置…一個縣市一張，比較好安排行程」→ 卡片下面一張地圖，跟著目前篩選走，號碼對卡片左上角 */
+.mapw{margin-top:22px;background:#fff;border:1.5px solid #c5ddd2;border-radius:22px;overflow:hidden;box-shadow:0 10px 28px -20px rgba(25,42,61,.5)}
+.maph{display:flex;align-items:baseline;gap:12px;padding:14px 20px;background:#e3efe9}
+.maph b{font-family:var(--serif);font-size:20px;color:#2c5a4d;letter-spacing:1px}
+.maph span{font-size:14px;color:var(--mute)}
+#map{height:460px;background:#eef3f0}
+.mk{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--kc,#3e8a74);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:grid;place-items:center}
+.mk b{transform:rotate(45deg);color:#fff;font:700 13px/1 system-ui,sans-serif}
+.leaflet-tooltip.mkt{background:rgba(255,255,255,.92);border:0;border-radius:8px;padding:2px 7px;font-size:12.5px;font-weight:700;color:#2c5a4d;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.leaflet-tooltip.mkt::before{display:none}
+.mpp b{display:block;font-size:15px;color:#192a3d;margin-bottom:2px}.mpp span{display:block;font-size:13px;color:#6b7a86;margin-bottom:8px}
+.mpp a,.mpp button{display:inline-block;border:1px solid #c5ddd2;background:#fff;border-radius:999px;padding:3px 12px;font-size:13px;color:#2c5a4d;margin-right:6px;text-decoration:none;cursor:pointer}
+.cd .no{position:absolute;left:10px;top:10px;z-index:2;min-width:28px;height:28px;padding:0 6px;border-radius:999px;background:var(--kc);color:#fff;font:700 14px/28px system-ui,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:none}
+.cd.flash{outline:3px solid var(--warm);outline-offset:3px}
+@media (max-width:640px){#map{height:360px}.maph{padding:12px 16px}.cd .no{left:6px;top:6px;min-width:24px;height:24px;line-height:24px;font-size:12.5px}}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
@@ -243,10 +258,11 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
   </section>
   <section class="stg" id="stg"></section>
   <nav class="cty" id="cty" aria-label="依縣市看"></nav>
-  <div class="cntw"><div class="cnt" id="cnt"></div><button type="button" class="selb" id="selB">選取</button></div>
+  <div class="cntw"><div class="cnt" id="cnt"></div><span><button type="button" class="selb" id="mapB" hidden>看地圖</button> <button type="button" class="selb" id="selB">選取</button></span></div>
   <div class="selbar" id="selBar"><b id="selN">已選 0 個</b><button type="button" id="selAll">全選</button><button type="button" class="rm" id="selRm">刪除</button><button type="button" id="selX">取消</button></div>
   <div class="grid" id="grid"></div>
   <div id="out"></div>
+  <section class="mapw" id="mapw" hidden><div class="maph"><b>地圖</b><span id="mapN"></span></div><div id="map"></div></section>
 </main>
 
 <dialog id="dP"><form method="dialog" id="fP">
@@ -581,6 +597,7 @@ function draw(){
   selSync();
   $('#out').innerHTML = out.length ? '<details class="out"><summary>還沒標適合'+esc(pe.name)+'的 '+out.length+' 個（卡片上點「'+esc(pe.name)+'」就會移上來）</summary><div class="grid">'
     +out.map(function(x){ return card(x.p, x.r, 0); }).join('')+'</div></details>' : '';
+  drawMap(ok);
 }
 
 // ---- 地點表單 ----
@@ -654,6 +671,40 @@ $('#uDel').addEventListener('click', function(){
   post({op:'pdel', name:PED.name}).then(function(){ D.people = D.people.filter(function(x){ return x !== PED; }); if(ST.who === PED.name) ST.who = ''; $('#dU').close(); draw(); }).catch(function(){});
 });
 
+// ---- 地圖：卡片下面那張，號碼跟卡片左上角一樣 ----
+var MAP = null, MLY = null, MKEY = '', MPTS = [];
+function drawMap(ok){
+  var pts = ok.filter(function(x){ return x.p.lat && x.p.lng; }).map(function(x, i){ return x.p; });
+  MPTS = pts; $('#mapw').hidden = $('#mapB').hidden = !pts.length;
+  pts.forEach(function(p, i){ var ph = document.querySelector('#grid .cd[data-id="'+p.id+'"] .ph'); if(ph) ph.insertAdjacentHTML('beforeend', '<span class="no">'+(i + 1)+'</span>'); });
+  if(!pts.length) return;
+  var miss = ok.length - pts.length;
+  $('#mapN').textContent = pts.length+' 個地點'+(miss ? '，另外 '+miss+' 個還沒有座標所以沒標' : '')+'・點圖釘看名字';
+  if(!window.L){ if(!drawMap.ld){ drawMap.ld = 1;
+      var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(c);
+      var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = function(){ drawMap.ld = 2; draw(); }; document.head.appendChild(s); }
+    return; }
+  if(!MAP){
+    MAP = L.map('map', {scrollWheelZoom:false, dragging:!L.Browser.mobile, tap:false});   // 不吃滑鼠滾輪、手機單指不拖地圖，免得捲頁面卡在地圖上
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(MAP);
+    MLY = L.layerGroup().addTo(MAP);
+  }
+  var key = pts.map(function(p){ return p.id+p.lat+p.lng+p.name+p.kind; }).join('|');
+  MAP.invalidateSize();
+  if(key === MKEY) return;   // 清單沒變（輪詢重畫）就不動地圖，免得他拖到一半被拉回去
+  MKEY = key; MLY.clearLayers();
+  var lab = pts.length <= 15;   // 15 個以內直接把名字掛在圖釘旁邊，多了只留號碼
+  pts.forEach(function(p, i){
+    var m = L.marker([+p.lat, +p.lng], {icon:L.divIcon({className:'', html:'<div class="mk" style="--kc:'+(KC[p.kind]||KC['其他'])+'"><b>'+(i + 1)+'</b></div>', iconSize:[30, 30], iconAnchor:[15, 30], popupAnchor:[0, -28], tooltipAnchor:[14, -16]})});
+    m.bindPopup('<div class="mpp"><b>'+(i + 1)+'. '+esc(p.name)+'</b><span>'+esc((p.kind||'')+(p.cat ? '・'+p.cat : '')+'　'+(p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
+      +'<a href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener">Google 地圖</a><button type="button" data-goc="'+p.id+'">看卡片</button></div>');
+    if(lab) m.bindTooltip(esc(p.name.length > 10 ? p.name.slice(0, 10)+'…' : p.name), {permanent:true, direction:'right', className:'mkt'});
+    MLY.addLayer(m);
+  });
+  if(pts.length === 1) MAP.setView([+pts[0].lat, +pts[0].lng], 14);
+  else MAP.fitBounds(pts.map(function(p){ return [+p.lat, +p.lng]; }), {padding:[40, 40], maxZoom:15});
+}
+
 // ---- 事件 ----
 document.addEventListener('click', function(e){
   var sb = e.target.closest('#selB,#selAll,#selRm,#selX');
@@ -666,6 +717,8 @@ document.addEventListener('click', function(e){
   var t = e.target.closest('button,a'); if(!t) return;
   var a = function(n){ return t.getAttribute(n); };
   if(t.id === 'nearB'){ near(); return; }
+  if(t.id === 'mapB'){ $('#mapw').scrollIntoView({behavior:'smooth', block:'center'}); return; }
+  if(a('data-goc')){ var gc = document.querySelector('#grid .cd[data-id="'+a('data-goc')+'"]'); if(gc){ gc.scrollIntoView({behavior:'smooth', block:'center'}); gc.classList.add('flash'); setTimeout(function(){ gc.classList.remove('flash'); }, 1800); } return; }
   if(a('data-cty') != null){ var c = a('data-cty'); ST.city = ST.city === c ? '' : c; if(QZ.step === 1) QZ.step = 2; draw(); return; }
   if(a('data-qz') != null){ ST[QK[QZ.step]] = a('data-qz'); QZ.step++; draw(); }
   else if(t.hasAttribute('data-qb')){ QZ.step--; ST[QK[QZ.step]] = ''; draw(); }
