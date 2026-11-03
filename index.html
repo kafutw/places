@@ -576,7 +576,7 @@ function card(p, r, rank){
   var isLink = /^https?:\/\//.test(p.link||'');
   return '<article data-id="'+p.id+'" class="cd'+(SEL && SEL[p.id] ? ' pick' : '')+(p.status === 'done' ? ' done' : '')+(p.pending ? ' pend' : '')+(p.id === NEW ? ' new' : '')+'" style="--kc:'+(KC[p.kind]||KC['其他'])+'">'
     +(p.img ? '<a class="ph" href="'+esc(mapUrl(p))+'" target="_blank" rel="noopener" title="開 Google 地圖" style="background-image:url(img/'+p.id+'.jpg?v='+esc(p.img)+')"></a>' : '<div class="ph none"></div>')
-    +'<h3>'+(rank ? '<span class="rk">'+rank+'</span>' : '')+esc(p.name)+(p.pending ? (p.auto_err ? '<span class="pb" title="自動查資料沒成功：'+esc(p.auto_err)+'">待整理</span>' : '<span class="pb run" title="正在自動開 Google 地圖查資料">查資料中…</span>') : '')+'</h3>'
+    +'<h3>'+(rank ? '<span class="rk">'+rank+'</span>' : '')+esc(p.name)+(p.pending ? (p.auto_err ? '<span class="pb" title="自動查資料沒成功：'+esc(p.auto_err)+'">待整理</span>' : (p.tjob ? '<span class="pb run" title="Claude 正在讀這串 Threads，把推薦的店家拆出來">Claude 整理中…</span>' : '<span class="pb run" title="正在自動開 Google 地圖查資料">查資料中…</span>')) : '')+'</h3>'
     +'<div class="mt">'+(KM[p.id] != null ? '<span class="km">'+kmText(KM[p.id])+'</span>' : '')+'<b>'+esc(p.kind||'未分類')+(p.cat ? '・'+esc(p.cat) : '')+'</b><span>'+esc((p.city||'')+(p.area ? ' '+p.area : ''))+'</span>'
     +(p.price ? '<span>'+esc(p.price)+'</span>' : '')+(p.status === 'drop' ? '<span>先不去</span>' : '')+'</div>'
     +((p.tags||[]).length ? '<div class="tags">'+(p.tags||[]).map(function(t){ return '<span class="tag">'+esc(t)+'</span>'; }).join('')+'</div>' : '')
