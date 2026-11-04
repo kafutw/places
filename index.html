@@ -148,6 +148,11 @@ button.stat.near:hover{background:#bb774b}
 .wh button.ad{border-style:dashed;color:var(--mute);font-weight:400;padding:0;width:32px;font-size:16px;flex:none}
 .why{font-size:13px;color:var(--deep);background:var(--warm-l);border-radius:10px;padding:4px 10px}
 .nt{font-size:13.5px;line-height:1.55;color:var(--body);white-space:pre-wrap}
+/* 11/4 他：「備註要出現才對，跟上面的字有點不一樣」→ places-note.html 六版挑 6 松綠淡底；查來的介紹在 note、他打的備註在 memo，備註最多五行、點開看全部 */
+.memo{background:#e3efe9;border-radius:10px;padding:8px 11px;margin-top:4px}
+.memo b{display:block;font-size:12.5px;color:var(--teal-d);letter-spacing:1px}
+.memo span{display:block;font-size:14.5px;line-height:1.55;color:#1f4a3d;font-weight:500;white-space:pre-wrap}
+.memo.cl span{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
 .vs{font-size:12.5px;color:var(--mute);border-top:1px dashed var(--line);padding-top:6px}
 .vs div{display:flex;gap:6px;align-items:center}
 .vs button{border:0;background:none;color:var(--mute);padding:0 4px;font-size:12px;margin-left:auto}
@@ -201,6 +206,7 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
   .cd h3{font-size:15px;letter-spacing:0;flex-wrap:wrap;gap:2px 6px}.cd h3 .pb{font-size:11px}
   .cd .mt{font-size:12px;gap:0 6px}.cd .mt:not(.hr){max-height:37px;overflow:hidden}
   .cd .tags,.cd .nt,.cd .hr,.cd .why{display:none}
+  .memo{margin-top:3px;padding:5px 7px;border-radius:8px}.memo b{font-size:11px}.memo span{font-size:12.5px;line-height:1.45}
   .wh{margin:auto -10px 0 -13px;padding:6px 8px 6px 11px;gap:4px;flex-wrap:wrap}.wh b{display:none}
   .wh button{font-size:12px;padding:1px 7px;min-height:26px;letter-spacing:0}.wh button.ad{width:26px;font-size:14px}.wh button.on::before{content:none}
   .act{margin:0 -10px -8px -13px;padding:6px 8px 8px 11px;gap:4px;justify-content:space-between}
@@ -287,7 +293,8 @@ dialog h2{margin:0;font-size:19px;color:#fff;background:var(--warm);padding:14px
     <label class="f">地址<input name="addr" maxlength="200"></label>
     <label>營業時間<input name="hours" maxlength="120"></label>
     <label>價位<input name="price" maxlength="60" placeholder="一人 300 左右"></label>
-    <label class="f">備註<textarea name="note" maxlength="600" placeholder="誰推薦的、想點什麼、要注意什麼"></textarea></label>
+    <label class="f">備註<textarea name="memo" maxlength="600" placeholder="誰推薦的、想點什麼、要注意什麼"></textarea></label>
+    <label class="f">介紹（Google、Threads 查到的）<textarea name="note" maxlength="600"></textarea></label>
     <label>狀態<select name="status"><option value="want">想去</option><option value="done">去過</option><option value="drop">先不去</option></select></label>
   </div>
   <div class="fa"><button type="button" class="del" id="pDel" hidden>刪除</button><span class="sp"></span><button value="cancel" formnovalidate>取消</button><button class="ok" value="ok">存起來</button></div>
@@ -461,7 +468,7 @@ function learned(name){
   return w;
 }
 function score(p, pe, lw){
-  var why = [], s = 0, hay = words(p).concat([p.name||'', p.note||'']).join(' ');
+  var why = [], s = 0, hay = words(p).concat([p.name||'', p.note||'', p.memo||'']).join(' ');
   if(pe.cities.length && p.city && pe.cities.indexOf(p.city) < 0) return {s:null, why:['不在'+pe.cities.join('、')]};
   for(var i = 0; i < pe.avoid.length; i++) if(pe.avoid[i] && hay.indexOf(pe.avoid[i]) >= 0) return {s:null, why:[pe.name+'不'+pe.avoid[i]]};
   if((p.who||[]).indexOf(pe.name) >= 0){ s += 3; why.push('標過適合'+pe.name); }
@@ -523,7 +530,7 @@ function pick(st){
     if(st.s === 'done' && s !== 'done') return false;
     if(st.kind && p.kind !== st.kind) return false;
     if(st.city && (st.city === '-' ? !!p.city : ck(p.city) !== st.city)) return false;
-    if(q && [p.name, p.cat, p.city, p.area, p.note, p.addr].concat(p.tags||[], p.who||[]).join(' ').toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
+    if(q && [p.name, p.cat, p.city, p.area, p.note, p.memo, p.addr].concat(p.tags||[], p.who||[]).join(' ').toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
     return true; });
   var ok = [], out = [];
   rows.forEach(function(p){ var r = pe ? score(p, pe, lw) : null; (!r || r.s > 0 ? ok : out).push({p:p, r:r}); });
@@ -583,6 +590,7 @@ function card(p, r, rank){
 
     +(r && r.why.length ? '<div class="why">'+esc(r.why.join('・'))+'</div>' : '')
     +(p.note ? '<div class="nt cl" data-more title="點一下看全部">'+esc(p.note)+'</div>' : '')
+    +(p.memo ? '<div class="memo cl" data-more title="點一下看全部"><b>備註</b><span>'+esc(p.memo)+'</span></div>' : '')
     +(p.hours ? '<div class="mt hr" title="'+esc(p.hours)+'">'+esc(p.hours)+'</div>' : '')
     +(vs ? '<div class="vs">'+vs+'</div>' : '')
     +'<div class="wh"><b>跟誰去</b>'+D.people.map(function(pe){ return '<button type="button" data-tw="'+p.id+'" data-n="'+esc(pe.name)+'"'+((p.who||[]).indexOf(pe.name) >= 0 ? ' class="on"' : '')+'>'+esc(pe.name)+'</button>'; }).join('')
@@ -609,7 +617,9 @@ function draw(){
 }
 
 // ---- 地點表單 ----
-var EDIT = null;
+var EDIT = null, ORIG = null;
+// 11/4 查資料的輪詢會換掉 D.places 裡的物件，視窗開著時 indexOf 會找不到（存了卡片不變），一律用 id 找
+function setP(np){ var i = D.places.map(function(x){ return x.id; }).indexOf(np.id); if(i >= 0) D.places[i] = np; else D.places.push(np); }
 function chk(box, sel){
   $(box).innerHTML = D.people.length ? D.people.map(function(p){ return '<button type="button" data-c="'+esc(p.name)+'"'+(sel.indexOf(p.name) >= 0 ? ' class="on"' : '')+'>'+esc(p.name)+'</button>'; }).join('')
     : '<span class="hint">還沒有人，上面「跟誰去」可以加</span>';
@@ -624,21 +634,25 @@ function openP(p){
   chk('#whoChk', p ? (p.who||[]) : (ST.who ? [ST.who] : []));
   $('#dPt').textContent = p ? '修改：'+p.name : '新增地點';
   var del = $('#pDel'); del.hidden = !p; del.classList.remove('arm'); del.textContent = '刪除';
+  ORIG = formP(f);
   $('#dP').showModal();
 }
+function formP(f){ var v = {};
+  ['name','kind','cat','city','area','link','addr','hours','price','note','memo','status'].forEach(function(k){ v[k] = f[k].value.trim(); });
+  v.tags = list(f.tags.value); v.who = picked('#whoChk'); return v; }
 $('#fP').addEventListener('submit', function(e){
   if(e.submitter && e.submitter.value !== 'ok') return;
-  e.preventDefault(); var f = e.target, v = {};
-  ['name','kind','cat','city','area','link','addr','hours','price','note','status'].forEach(function(k){ v[k] = f[k].value.trim(); });
-  v.tags = list(f.tags.value); v.who = picked('#whoChk');
+  e.preventDefault(); var v = formP(e.target);
+  // 11/4 只送他動過的欄位：視窗開著時自動查資料剛好寫入，舊的空白才不會把查到的地址蓋掉（元湯溫泉居）
+  if(EDIT) Object.keys(v).forEach(function(k){ if(JSON.stringify(v[k]) === JSON.stringify(ORIG[k])) delete v[k]; });
   var req = EDIT ? {op:'edit', id:EDIT.id, p:v} : {op:'add', p:v};
   post(req).then(function(j){
-    if(EDIT){ var i = D.places.indexOf(EDIT); D.places[i] = j.p; } else D.places.push(j.p);
+    setP(j.p);
     $('#dP').close(); draw(); toast(EDIT ? '改好了' : '「'+j.p.name+'」加進清單了'); }).catch(function(){});
 });
 $('#pDel').addEventListener('click', function(){
   var b = this; if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent = '再按一次確定刪除'; return; }
-  post({op:'del', id:EDIT.id}).then(function(){ D.places = D.places.filter(function(x){ return x !== EDIT; }); $('#dP').close(); draw(); toast('刪掉了'); }).catch(function(){});
+  post({op:'del', id:EDIT.id}).then(function(){ D.places = D.places.filter(function(x){ return x.id !== EDIT.id; }); $('#dP').close(); draw(); toast('刪掉了'); }).catch(function(){});
 });
 // ---- 去過了 ----
 var VIS = null;
@@ -650,7 +664,7 @@ $('#fV').addEventListener('submit', function(e){
   if(e.submitter && e.submitter.value !== 'ok') return;
   e.preventDefault(); var f = e.target;
   post({op:'visit', id:VIS.id, v:{date:f.date.value, like:+f.like.value, note:f.note.value, 'with':picked('#visChk')}}).then(function(j){
-    D.places[D.places.indexOf(VIS)] = j.p; $('#dV').close(); draw(); toast('記下來了，移到「去過」'); }).catch(function(){});
+    setP(j.p); $('#dV').close(); draw(); toast('記下來了，移到「去過」'); }).catch(function(){});
 });
 // ---- 人 ----
 var PED = null;
@@ -751,14 +765,14 @@ document.addEventListener('click', function(e){
   else if(a('data-vis')) openV(D.places.filter(function(p){ return p.id === a('data-vis'); })[0]);
   else if(a('data-unv')){ var p = D.places.filter(function(x){ return x.id === a('data-unv'); })[0];
     if(!confirm('刪掉這筆去過的紀錄？')) return;
-    post({op:'unvisit', id:p.id, i:+a('data-i')}).then(function(j){ D.places[D.places.indexOf(p)] = j.p; draw(); }).catch(function(){}); }
+    post({op:'unvisit', id:p.id, i:+a('data-i')}).then(function(j){ setP(j.p); draw(); }).catch(function(){}); }
   else if(a('data-tw')) tagWho(D.places.filter(function(x){ return x.id === a('data-tw'); })[0], a('data-n'));
   else if(a('data-c') != null) t.classList.toggle('on');
 });
 // ---- 卡片上點人：標／取消「適合跟誰去」，點了就存 ----
 function tagWho(p, n){
   var add = function(){ var w = (p.who||[]).slice(), i = w.indexOf(n); if(i >= 0) w.splice(i, 1); else w.push(n);
-    post({op:'edit', id:p.id, p:{who:w}}).then(function(j){ D.places[D.places.indexOf(p)] = j.p; draw(); toast(i >= 0 ? '拿掉了：'+n : '「'+p.name+'」標成適合帶'+n+'去'); }).catch(function(){}); };
+    post({op:'edit', id:p.id, p:{who:w}}).then(function(j){ setP(j.p); draw(); toast(i >= 0 ? '拿掉了：'+n : '「'+p.name+'」標成適合帶'+n+'去'); }).catch(function(){}); };
   if(n) return add();
   n = (prompt('加一個人（例：孩子、爸媽、朋友）') || '').trim(); if(!n) return;
   if(person(n)) return add();
